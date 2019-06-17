@@ -190,14 +190,6 @@ elif args.activation_function == 'tanh':
         return 1 - torch.tanh(x)**2
     def rhop2(x):
         return 1 - x**2   
-
-elif args.activation_function == 'relu':
-    def rho(x):
-        return x.clamp(min = 0)
-    def rhop(x):
-        return x > 0
-    def rhop2(x):
-        return 0
      
                     
 if __name__ == '__main__':
@@ -307,7 +299,7 @@ if __name__ == '__main__':
         #save hyperparameters
         createHyperparameterfile(BASE_PATH, name, args)
         
-        results_dict = {'nS' : nS, 'dS' : dS, 'NT': NT, 'DT': DT, 'toymodel': args.toymodel}
+        results_dict = {'nS' : nS, 'dS' : dS, 'NT': NT, 'DT': DT, 'args': args}
                           
         outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
         pickle.dump(results_dict, outfile)

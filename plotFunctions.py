@@ -197,6 +197,7 @@ def plot_S(nS, dS):
 
     if not (len(nS[-1].size()) >= 4):
         plt.figure()
+        plt.rcParams.update({'font.size': fontsize})  
         plt.subplots_adjust(hspace = 0.5)
         for i in range(len(nS)):       
             plt.subplot(len(nS), 1, 1 + i)
@@ -302,7 +303,7 @@ def compute_nTdT(NT, DT):
         
         return [nT_conv, nT_fc], [dT_conv, dT_fc]        
         
-def computeHist(nS, dS, NT, DT):
+def compute_Hist(nS, dS, NT, DT):
     hist_S_mean = []
     hist_T_mean = []
     hist_S_std = []
@@ -422,12 +423,12 @@ if __name__ == '__main__':
         NT = results_dict['NT']
         DT = results_dict['DT']
         nT, dT = compute_nTdT(NT, DT)    
-        hist_S, hist_T = compute_Hist(nS, dS, NT, DT)
-        plot_Hist(hist_S, hist_T, NT)   
+        #hist_S, hist_T = compute_Hist(nS, dS, NT, DT)
+        #plot_Hist(hist_S, hist_T, NT)   
         plt.show()
         plot_S(nS, dS)
-        toymodel = results_dict['toymodel']           
-        plot_T(nT, dT, toymodel)                                 
+        args = results_dict['args']           
+        plot_T(nT, dT, args)                                 
         plt.show()
     
     if 'error_train_tab' in results_dict:
