@@ -58,8 +58,9 @@ def train(net, train_loader, epoch, method):
                     seq = []
                     for i in range(len(s)):
                         seq.append(s[i].clone())
-                    s = net.forward(data, s, target = targets, beta = net.beta, method = 'nograd')    
-                    net.updateWeights(net.beta, data, s, seq)
+                    s = net.forward(data, s, target = targets, beta = net.beta, method = 'nograd')
+                    if not net.cep:   
+                        net.updateWeights(net.beta, data, s, seq)
                     #########################################################################################
 
                        
@@ -637,16 +638,13 @@ def createPath(args):
     if args.action == 'train':
         BASE_PATH = os.getcwd() + '/' 
 
-        name = 'vf'
+        name = args.learning_rule
 
-        if args.conv: 
-            name = name + '_conv'
+        if args.discrete:
+            name = name + '_disc'
         else:
-            if args.discrete:
-                name = name + '_disc'
-            else:
-                name = name + '_cont'
-            name = name + '_' + str(len(args.size_tab) - 2) + 'hidden'
+            name = name + '_cont'
+        name = name + '_' + str(len(args.size_tab) - 2) + 'hidden'
                     
         BASE_PATH = BASE_PATH + name
 
@@ -680,20 +678,13 @@ def createPath(args):
     elif args.action == 'plotcurves':
         BASE_PATH = os.getcwd() + '/' 
 
-        name = 'vf'
-
-        if args.conv: 
-            name = name + '_conv'
-            
-        if args.no_pool:
-            name = name + '_nopool'
+        name = args.learning_rule
                 
+        if args.discrete:
+            name = name + '_disc'
         else:
-            if args.discrete:
-                name = name + '_disc'
-            else:
-                name = name + '_cont'
-            name = name + '_' + str(len(args.size_tab) - 2) + 'hidden'
+            name = name + '_cont'
+        name = name + '_' + str(len(args.size_tab) - 2) + 'hidden'
                     
         BASE_PATH = BASE_PATH + name
 
@@ -725,6 +716,7 @@ def createHyperparameterfile(BASE_PATH, name, args):
     if args.action == 'train':
         hyperparameters = open(BASE_PATH + r"/hyperparameters.txt","w+") 
         L = [" TRAINING: list of hyperparameters " + "(" + name + ", " + datetime.datetime.now().strftime("cuda" + str(args.device_label)+"-%Y-%m-%d") + ") \n",
+			"- Learning rule: " + args.learning_rule + "\n",
             "- T: {}".format(args.T) + "\n",
             "- Kmax: {}".format(args.Kmax) + "\n",
             "- beta: {:.2f}".format(args.beta) + "\n", 
@@ -736,17 +728,8 @@ def createHyperparameterfile(BASE_PATH, name, args):
         if not args.discrete:
             L.append("- dt: {:.3f}".format(args.dt) + "\n")   
 
-        if args.conv:
-            L.append("- channel sizes: {}".format(args.C_tab) + "\n")
-            L.append("- classifier sizes: {}".format(args.size_class_tab) + "\n")
-            L.append("- filter size: {}".format(args.Fconv) + "\n")
-            L.append("- data set: " + args.dataset + "\n")
-            if args.padding == 1:
-                L.append("- padded layers: yes !\n")
-            else:
-                L.append("- padded layers: no\n")     
-        else:
-            L.append("- layer sizes: {}".format(args.size_tab) + "\n")
+
+        L.append("- layer sizes: {}".format(args.size_tab) + "\n")
 
         hyperparameters.writelines(L) 
         hyperparameters.close()
@@ -754,6 +737,7 @@ def createHyperparameterfile(BASE_PATH, name, args):
     elif args.action == 'plotcurves':        
         hyperparameters = open(BASE_PATH + r"/hyperparameters.txt","w+") 
         L = ["NABLA-DELTA CURVES: list of hyperparameters " + "(" + name + ", " + datetime.datetime.now().strftime("cuda" + str(args.device_label)+"-%Y-%m-%d") + ") \n",
+            "- Learning rule: " + args.learning_rule + "\n",
             "- T: {}".format(args.T) + "\n",
             "- Kmax: {}".format(args.Kmax) + "\n",
             "- beta: {:.2f}".format(args.beta) + "\n", 
@@ -763,16 +747,8 @@ def createHyperparameterfile(BASE_PATH, name, args):
         if not args.discrete:
             L.append("- dt: {:.3f}".format(args.dt) + "\n")   
 
-        if args.conv:
-            L.append("- channel sizes: {}".format(args.C_tab) + "\n")
-            L.append("- classifier sizes: {}".format(args.size_tab) + "\n")
-            L.append("- filter size: {}".format(args.Fconv) + "\n")
-            if args.padding == 1:
-                L.append("- padded layers: yes !\n")
-            else:
-                L.append("- padded layers: no\n")     
-        else:
-            L.append("- layer sizes: {}".format(args.size_tab) + "\n")
+
+        L.append("- layer sizes: {}".format(args.size_tab) + "\n")
 
         hyperparameters.writelines(L) 
         hyperparameters.close()        

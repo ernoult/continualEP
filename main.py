@@ -8,8 +8,11 @@ from netClasses import *
 from netFunctions import * 
 from plotFunctions import *
 
+
+#***************C- EP VERSION***************#
+
 # Training settings
-parser = argparse.ArgumentParser(description='VF-EqProp')
+parser = argparse.ArgumentParser(description='VF & C-EP')
 parser.add_argument(
     '--batch-size',
     type=int,
@@ -109,51 +112,27 @@ parser.add_argument(
     type=int,
     default=0,
     help='selects cuda device (default 0, -1 to select )')
-parser.add_argument(
-    '--C_tab',
-    nargs = '+',
-    type=int,
-    default=[],
-    metavar='LR',
-    help='channel tab (default: [])')
-parser.add_argument(
-    '--padding',
-    type=int,
-    default=0,
-    metavar='P',
-    help='padding (default: 0)')
-parser.add_argument(
-    '--Fconv',
-    type=int,
-    default=5,
-    metavar='F',
-    help='convolution filter size (default: 5)')   
+
+#***********************************************#
 parser.add_argument(
     '--benchmark',
     action='store_true',
     default=False, 
-    help='benchmark EP wrt BPTT (default: False)')
-#************************************************************#
-
+    help='benchmark wrt BPTT (default: False)')
 parser.add_argument(
-    '--no-pool',
+    '--learning-rule',
+    type=str,
+    default='ep',
+    metavar='LR',
+    help='learning rule (ep/vf, default: ep)')
+parser.add_argument(
+    '--cep',
     action='store_true',
     default=False, 
-    help='remove pool (default: False)')
-
-parser.add_argument(
-    '--stride',
-    type=int,
-    default=1,
-    metavar='STR',
-    help='convolution stride (default: 1)')
-
-#************************************************************#
-
+    help='continual ep/vf (default: False)')
+#***********************************************#
 
 args = parser.parse_args()
-
-args.conv = not not args.C_tab
 
 batch_size = args.batch_size
 batch_size_test = args.test_batch_size
@@ -177,23 +156,19 @@ class ReshapeTransformTarget:
 
         
 
+mnist_transforms=[torchvision.transforms.ToTensor(),ReshapeTransform((-1,))]
 
-if (args.conv):
-    mnist_transforms=[torchvision.transforms.ToTensor()]
-else:
-    mnist_transforms=[torchvision.transforms.ToTensor(),ReshapeTransform((-1,))]
+train_loader = torch.utils.data.DataLoader(
+torchvision.datasets.MNIST(root='./data', train=True, download=True,
+                     transform=torchvision.transforms.Compose(mnist_transforms),
+                     target_transform=ReshapeTransformTarget(10)),
+batch_size = args.batch_size, shuffle=True)
 
-    train_loader = torch.utils.data.DataLoader(
-    torchvision.datasets.MNIST(root='./data', train=True, download=True,
-                             transform=torchvision.transforms.Compose(mnist_transforms),
-                             target_transform=ReshapeTransformTarget(10)),
-    batch_size = args.batch_size, shuffle=True)
-
-    test_loader = torch.utils.data.DataLoader(
-    torchvision.datasets.MNIST(root='./data', train=False, download=True,
-                             transform=torchvision.transforms.Compose(mnist_transforms),
-                             target_transform=ReshapeTransformTarget(10)),
-    batch_size = args.test_batch_size, shuffle=True)
+test_loader = torch.utils.data.DataLoader(
+torchvision.datasets.MNIST(root='./data', train=False, download=True,
+                     transform=torchvision.transforms.Compose(mnist_transforms),
+                     target_transform=ReshapeTransformTarget(10)),
+batch_size = args.test_batch_size, shuffle=True)
 
 
 if  args.activation_function == 'sigm':
@@ -230,45 +205,76 @@ if __name__ == '__main__':
     input_size = 28
 
     #Build the net 
-    if (not args.toymodel) & (not args.discrete):
+    if (not args.toymodel) & (not args.discrete) & (args.learning_rule == 'vf') :
 
         net = VFcont(args.device_label, args.size_tab, args.lr_tab, 
                     args.T, args.Kmax, args.beta, 
                     dt = args.dt, no_clamp = args.no_clamp, 
-                    weight_initialization = args.weight_initialization)
+                    weight_initialization = args.weight_initialization,
+                    cep = args.cep)
 
-        net_bptt = VFcont(args.device_label, args.size_tab, args.lr_tab, 
+        if args.benchmark:
+            net_bptt = VFcont(args.device_label, args.size_tab, args.lr_tab, 
+                        args.T, args.Kmax, args.beta, 
+                        dt = args.dt, no_clamp = args.no_clamp, 
+                        weight_initialization = args.weight_initialization)
+
+            net_bptt.load_state_dict(net.state_dict())
+
+    if (not args.toymodel) & (not args.discrete) & (args.learning_rule == 'ep') :
+
+        net = EPcont(args.device_label, args.size_tab, args.lr_tab, 
                     args.T, args.Kmax, args.beta, 
-                    dt = args.dt, no_clamp = args.no_clamp, 
-                    weight_initialization = args.weight_initialization)
+                    dt = args.dt, no_clamp = args.no_clamp,
+                    cep = args.cep)
 
-        net_bptt.load_state_dict(net.state_dict())
+        if args.benchmark:
+            net_bptt = EPcont(args.device_label, args.size_tab, args.lr_tab, 
+                        args.T, args.Kmax, args.beta, 
+                        dt = args.dt, no_clamp = args.no_clamp)
 
-    elif (not args.toymodel) & (args.discrete):
+            net_bptt.load_state_dict(net.state_dict())
+
+
+    elif (not args.toymodel) & (args.discrete) & (args.learning_rule == 'vf'):
 
         net = VFdisc(args.device_label, args.size_tab, args.lr_tab, 
                     args.T, args.Kmax, args.beta, 
-                    weight_initialization = args.weight_initialization)
+                    weight_initialization = args.weight_initialization,
+                    cep = args.cep)
 
-        net_bptt = VFdisc(args.device_label, args.size_tab, args.lr_tab, 
-                    args.T, args.Kmax, args.beta, 
-                    weight_initialization = args.weight_initialization)
+        if args.benchmark:
+            net_bptt = VFdisc(args.device_label, args.size_tab, args.lr_tab, 
+                        args.T, args.Kmax, args.beta, 
+                        weight_initialization = args.weight_initialization)
 
-        net_bptt.load_state_dict(net.state_dict())
+            net_bptt.load_state_dict(net.state_dict())
+
+    elif (not args.toymodel) & (args.discrete) & (args.learning_rule == 'ep'):
+
+        net = EPdisc(args.device_label, args.size_tab, args.lr_tab, 
+			        args.T, args.Kmax, args.beta, cep = args.cep)
+
+        if args.benchmark:
+            net_bptt = EPdisc(args.device_label, args.size_tab, args.lr_tab, 
+			            args.T, args.Kmax, args.beta)
+
+            net_bptt.load_state_dict(net.state_dict())         
 
 
     elif (args.toymodel) & (not args.discrete):
-
         net = toyVFcont(args.device_label, args.size_tab, args.lr_tab, 
                         args.T, args.Kmax, args.beta, 
                         dt = args.dt, no_clamp = args.no_clamp,
-                        weight_initialization = args.weight_initialization)
+                        weight_initialization = args.weight_initialization,
+                        cep = args.cep)
 
     elif (args.toymodel) & (args.discrete):
 
         net = toyVFdisc(args.device_label, args.size_tab, args.lr_tab, 
                         args.T, args.Kmax, args.beta, 
-                        weight_initialization = args.weight_initialization)   
+                        weight_initialization = args.weight_initialization,
+                        cep = args.cep)   
                                   
 
     if args.action == 'plotcurves':
@@ -292,7 +298,7 @@ if __name__ == '__main__':
         plt.show()
         NT = compute_NT(net, x, target)
         #instNT, instDT = computeInstantaneousTheta(NT, DT)
-        plot_T(NT, DT, args.toymodel)
+        plot_T(NT, DT, args)
         plt.show()
         
         #create path              
