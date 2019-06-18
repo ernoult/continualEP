@@ -638,7 +638,10 @@ def createPath(args):
     if args.action == 'train':
         BASE_PATH = os.getcwd() + '/' 
 
-        name = args.learning_rule
+        if args.cep:
+            name = 'c-' + args.learning_rule
+        else:
+            name = args.learning_rule
 
         if args.discrete:
             name = name + '_disc'
@@ -678,7 +681,10 @@ def createPath(args):
     elif args.action == 'plotcurves':
         BASE_PATH = os.getcwd() + '/' 
 
-        name = args.learning_rule
+        if args.cep:
+            name = 'c-' + args.learning_rule
+        else:
+            name = args.learning_rule
                 
         if args.discrete:
             name = name + '_disc'

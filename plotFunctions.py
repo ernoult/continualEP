@@ -4,7 +4,7 @@ import os, sys
 import pickle
 import torch
 
-fontsize = 12
+fontsize = 13
 
 def plot_T(NT, DT, *arg): 
     if not isinstance(NT[0], list):
@@ -16,8 +16,9 @@ def plot_T(NT, DT, *arg):
             
             if args.learning_rule == 'vf':
 
-                plt.figure()
-                plt.subplots_adjust(hspace = 1)
+                fig = plt.figure()
+                #plt.subplots_adjust(hspace = 1)
+                plt.rcParams.update({'font.size': fontsize})
                 N = int((len(NT) - 1)/2)
                 for i in range(N):
                     plt.subplot(len(NT), 1, 2*i +1)
@@ -48,6 +49,8 @@ def plot_T(NT, DT, *arg):
                 plt.xlabel('t')
                 plt.title(r'$\Delta_{W_{'+ str(N - 1) +r'x}}^{\rm EP}$, $-\nabla_{W_{'+ str(N - 1) +r'x}}^{\rm BPTT}$')
                 plt.grid()
+                plt.subplots_adjust(hspace = 0.5)
+                fig.tight_layout()
                 plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
             else:
@@ -85,74 +88,47 @@ def plot_T(NT, DT, *arg):
         
 
         else:
-            if args.learning_rule == 'vf':
-                plt.figure()
-                plt.subplots_adjust(hspace = 1)
-                plt.subplot(2, 1, 1)
-                for j in range(5):
-                    ind_temp0, ind_temp1 = np.random.randint(NT[1][0, :, :].size(0)), np.random.randint(NT[1][0, :, :].size(1))
-                    plt.plot(NT[1][:, ind_temp0, ind_temp1].cpu().numpy(), label='NT01['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j))
-                    plt.plot(DT[1][:, ind_temp0, ind_temp1].cpu().numpy(), label='DT01['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j),linestyle='--')
-                plt.xlabel('t')
-                plt.title(r'$\Delta_{W_{01}}^{\rm EP}$, $-\nabla_{W_{01}}^{\rm BPTT}$')
-                plt.grid()
-                plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+            fig = plt.figure(figsize = (5, 8))     
+            plt.rcParams.update({'font.size': fontsize})      
+            plt.subplot(3, 1, 1)
+            for j in range(5):
+                ind_temp0, ind_temp1 = np.random.randint(NT[1][0, :, :].size(0)), np.random.randint(NT[1][0, :, :].size(1))
+                plt.plot(NT[1][:, ind_temp0, ind_temp1].cpu().numpy(), 
+                        label='NT01['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j))
+                plt.plot(DT[1][:, ind_temp0, ind_temp1].cpu().numpy(), 
+                        label='DT01['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j),linestyle='--')
+            plt.xlabel('t')
+            plt.title(r'$\Delta_{W_{01}}^{\rm EP}$, $-\nabla_{W_{01}}^{\rm BPTT}$')
+            plt.grid()
+            plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+            
+            plt.subplot(3, 1, 2)
+            for j in range(5):
+                ind_temp0, ind_temp1 = np.random.randint(NT[2][0, :, :].size(0)), np.random.randint(NT[2][0, :, :].size(1))
+                plt.plot(NT[2][:, ind_temp0, ind_temp1].cpu().numpy(), 
+                        label='NT0x['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j))
+                plt.plot(DT[2][:, ind_temp0, ind_temp1].cpu().numpy(), 
+                        label='DT0x['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j),linestyle='--')
+            plt.xlabel('t')
+            plt.title(r'$\Delta_{W_{0x}}^{\rm EP}$, $-\nabla_{W_{0x}}^{\rm BPTT}$')
+            plt.grid()
+            plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))         
 
 
-                plt.subplot(2, 1, 2)
-                for j in range(5):
-                    ind_temp0, ind_temp1 = np.random.randint(NT[3][0, :, :].size(0)), np.random.randint(NT[3][0, :, :].size(1))
-                    plt.plot(NT[3][:, ind_temp0, ind_temp1].cpu().numpy(), label='NT11['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j))
-                    plt.plot(DT[3][:, ind_temp0, ind_temp1].cpu().numpy(), label='DT11['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j),linestyle='--')
-                plt.xlabel('t')
-                plt.title(r'$\Delta_{W_{11}}^{EP}$, $-\nabla_{W_{11}}^{\rm BPTT}$')
-                plt.grid()
-                plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+            plt.subplot(3, 1, 3)
+            for j in range(5):
+                ind_temp0, ind_temp1 = np.random.randint(NT[4][0, :, :].size(0)), np.random.randint(NT[4][0, :, :].size(1))
+                plt.plot(NT[4][:, ind_temp0, ind_temp1].cpu().numpy(), 
+                        label='NT11['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j))
+                plt.plot(DT[4][:, ind_temp0, ind_temp1].cpu().numpy(), 
+                        label='DT11['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j),linestyle='--')
+            plt.xlabel('t')
+            plt.title(r'$\Delta_{W_{1x}}^{\rm EP}$, $-\nabla_{W_{1x}}^{\rm BPTT}$')
+            plt.grid()
+            plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
-            else:
-                fig = plt.figure(figsize = (5, 8))     
-                plt.rcParams.update({'font.size': fontsize})      
-                plt.subplot(3, 1, 1)
-                for j in range(5):
-                    ind_temp0, ind_temp1 = np.random.randint(NT[1][0, :, :].size(0)), np.random.randint(NT[1][0, :, :].size(1))
-                    plt.plot(NT[1][:, ind_temp0, ind_temp1].cpu().numpy(), 
-                            label='NT01['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j))
-                    plt.plot(DT[1][:, ind_temp0, ind_temp1].cpu().numpy(), 
-                            label='DT01['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j),linestyle='--')
-                plt.xlabel('t')
-                plt.title(r'$\Delta_{W_{01}}^{\rm EP}$, $-\nabla_{W_{01}}^{\rm BPTT}$')
-                plt.grid()
-                plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-                
-                plt.subplot(3, 1, 2)
-                for j in range(5):
-                    ind_temp0, ind_temp1 = np.random.randint(NT[2][0, :, :].size(0)), np.random.randint(NT[2][0, :, :].size(1))
-                    plt.plot(NT[2][:, ind_temp0, ind_temp1].cpu().numpy(), 
-                            label='NT0x['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j))
-                    plt.plot(DT[2][:, ind_temp0, ind_temp1].cpu().numpy(), 
-                            label='DT0x['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j),linestyle='--')
-                plt.xlabel('t')
-                plt.title(r'$\Delta_{W_{0x}}^{\rm EP}$, $-\nabla_{W_{0x}}^{\rm BPTT}$')
-                plt.grid()
-                plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))         
-
-
-                plt.subplot(3, 1, 3)
-                for j in range(5):
-                    ind_temp0, ind_temp1 = np.random.randint(NT[4][0, :, :].size(0)), np.random.randint(NT[4][0, :, :].size(1))
-                    plt.plot(NT[4][:, ind_temp0, ind_temp1].cpu().numpy(), 
-                            label='NT11['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j))
-                    plt.plot(DT[4][:, ind_temp0, ind_temp1].cpu().numpy(), 
-                            label='DT11['+str(ind_temp0)+str(ind_temp1)+']',color='C'+str(j),linestyle='--')
-                plt.xlabel('t')
-                plt.title(r'$\Delta_{W_{1x}}^{\rm EP}$, $-\nabla_{W_{1x}}^{\rm BPTT}$')
-                plt.grid()
-                plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-
-                plt.subplots_adjust(hspace = 0.5)
-                fig.tight_layout()       
-
-
+            plt.subplots_adjust(hspace = 0.5)
+            fig.tight_layout()       
 
     else:
         NT_conv, NT_fc = NT[0], NT[1]     
@@ -196,9 +172,9 @@ def plot_T(NT, DT, *arg):
 def plot_S(nS, dS):
 
     if not (len(nS[-1].size()) >= 4):
-        plt.figure()
+        fig = plt.figure(figsize = (5, 5))
+        #plt.figure(figsize = (5, 8))
         plt.rcParams.update({'font.size': fontsize})  
-        plt.subplots_adjust(hspace = 0.5)
         for i in range(len(nS)):       
             plt.subplot(len(nS), 1, 1 + i)
             for j in range(5):
@@ -214,6 +190,8 @@ def plot_S(nS, dS):
             plt.title(r'$\Delta_{s_{' + str(i) +r'}}^{\rm EP}$, $-\nabla_{s_{' + str(i) +r'}}^{\rm BPTT}$')   
             plt.grid()    
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+            plt.subplots_adjust(hspace = 0.5)
+            fig.tight_layout()
 
     else:        
         #plt.figure(figsize = (5, 8))
@@ -245,8 +223,9 @@ def plot_S(nS, dS):
             plt.grid()    
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))  
         plt.xlabel('t', fontsize = 10)
+        plt.subplots_adjust(hspace = 0.5)
         fig.tight_layout()
-        plt.subplots_adjust(hspace = 1)             
+                     
         
 def compute_nTdT(NT, DT):
 
@@ -356,27 +335,58 @@ def compute_Hist(nS, dS, NT, DT):
             
     return [hist_S_mean, hist_S_std] , [hist_T_mean, hist_T_std]        
 
-def plot_Hist(hist_S, hist_T, NT):
+def plot_Hist(hist_S, hist_T, NT, args):
     ind = []
     ind_names = []
-    plt.figure(figsize = (4, 4))
+    fig = plt.figure(figsize = (5, 5))
     plt.rcParams.update({'font.size': fontsize})
     for i in range(len(hist_S[0])):
         plt.bar(i, hist_S[0][i], width = 1, label = r'$s^{'+str(i)+'}$', alpha = 0.5)
         ind.append(i)
         ind_names.append(r'$s^{'+str(i)+'}$')
+
     if not isinstance(NT[0], list):
-        for i in range(len(hist_T[0]) - 1):
-            plt.bar(len(hist_S[0]) + 1 + i, hist_T[0][i], 
-                    width = 1, label = r'$W_{'+str(i) + str(i + 1) +'}$', alpha = 0.4)
-            ind.append(len(hist_S[0]) + 1 + i)
-            ind_names.append(r'$W_{'+str(i) + str(i + 1) +'}$')
-        
-        plt.bar(len(hist_S[0]) + len(hist_T[0]), hist_T[0][-1], 
-                width = 1, label = r'$W_{'+str(len(hist_T[0]) - 1) +'x}$', alpha = 0.4)
-        ind.append(len(hist_S[0]) + len(hist_T[0]))
-        ind_names.append(r'$W_{'+str(len(hist_T[0]) - 1) +'x}$')    
-        
+
+        if (args.learning_rule == 'ep') & (not args.toymodel):
+            for i in range(len(hist_T[0]) - 1):
+                plt.bar(len(hist_S[0]) + 1 + i, hist_T[0][i], 
+                        width = 1, label = r'$W_{'+str(i) + str(i + 1) +'}$', alpha = 0.4)
+                ind.append(len(hist_S[0]) + 1 + i)
+                ind_names.append(r'$W_{'+str(i) + str(i + 1) +'}$')
+            
+            plt.bar(len(hist_S[0]) + len(hist_T[0]), hist_T[0][-1], 
+                    width = 1, label = r'$W_{'+str(len(hist_T[0]) - 1) +'x}$', alpha = 0.4)
+            ind.append(len(hist_S[0]) + len(hist_T[0]))
+            ind_names.append(r'$W_{'+str(len(hist_T[0]) - 1) +'x}$')
+
+
+        elif (args.learning_rule == 'vf') & (not args.toymodel):
+            for i in range(int((len(hist_T[0]) - 1)/2)):
+                plt.bar(len(hist_S[0]) + 1 + 2*i, hist_T[0][2*i], 
+                        width = 1, label = r'$W_{'+str(i) + str(i + 1) +'}$', alpha = 0.4)
+                ind.append(len(hist_S[0]) + 1 + 2*i)
+                ind_names.append(r'$W_{'+str(i) + str(i + 1) +'}$')
+
+                plt.bar(len(hist_S[0]) + 1 + 2*i + 1, hist_T[0][2*i + 1], 
+                        width = 1, label = r'$W_{'+str(i + 1) + str(i) +'}$', alpha = 0.4)
+                ind.append(len(hist_S[0]) + 1 + 2*i + 1)
+                ind_names.append(r'$W_{'+str(i + 1) + str(i) +'}$')
+            
+            plt.bar(len(hist_S[0]) + len(hist_T[0]), hist_T[0][-1], 
+                    width = 1, label = r'$W_{'+str(int((len(hist_T[0]) - 1)/2)) +'x}$', alpha = 0.4)
+            ind.append(len(hist_S[0]) + len(hist_T[0]))
+            ind_names.append(r'$W_{'+str(int((len(hist_T[0]) - 1)/2)) +'x}$')
+
+
+        elif (args.learning_rule == 'vf') & (args.toymodel):
+
+            ind_W = ['00', '01', '0x', '11', '1x', '10'] 
+                
+            for i in range(len(hist_T[0])):
+                plt.bar(len(hist_S[0]) + 1 + i, hist_T[0][i], 
+                        width = 1, label = r'$W_{'+ ind_W[i] +'}$', alpha = 0.4)
+                ind.append(len(hist_S[0]) + 1 + i)
+                ind_names.append(r'$W_{'+ ind_W[i] +'}$')                    
     else:
         nconv = len(NT[0])
         nfc = len(NT[1]) 
@@ -394,7 +404,8 @@ def plot_Hist(hist_S, hist_T, NT):
         ind.append(len(hist_S[0]) + nfc + nconv)
         ind_names.append(r'$W_{'+str(nconv - 1)+r'x}^{\rm conv}$')   
 
-    plt.xticks(ind, ind_names)    
+    fig.tight_layout()
+    plt.xticks(ind, ind_names, fontsize = fontsize)    
     plt.grid() 
 
 def plot_results(what, *arg):
@@ -422,12 +433,13 @@ if __name__ == '__main__':
         dS = results_dict['dS']
         NT = results_dict['NT']
         DT = results_dict['DT']
+        args = results_dict['args'] 
         nT, dT = compute_nTdT(NT, DT)    
-        #hist_S, hist_T = compute_Hist(nS, dS, NT, DT)
-        #plot_Hist(hist_S, hist_T, NT)   
+        hist_S, hist_T = compute_Hist(nS, dS, NT, DT)
+        plot_Hist(hist_S, hist_T, NT, args)   
         plt.show()
         plot_S(nS, dS)
-        args = results_dict['args']           
+                  
         plot_T(nT, dT, args)                                 
         plt.show()
     
