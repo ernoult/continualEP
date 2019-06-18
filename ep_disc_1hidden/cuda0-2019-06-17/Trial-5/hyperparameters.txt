@@ -1,0 +1,10 @@
+ TRAINING: list of hyperparameters (ep_disc_1hidden, cuda0-2019-06-17) 
+- Learning rule: ep
+- T: 40
+- Kmax: 15
+- beta: 0.10
+- batch size: 20
+- activation function: sigm
+- number of epochs: 60
+- learning rates: [0.0001, 0.0003]
+- layer sizes: [10, 512, 784]
