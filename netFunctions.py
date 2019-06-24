@@ -294,10 +294,7 @@ def compute_nSdSDT(net, data, target):
             s, dS, DT_conv, DT_fc = net.forward(data, s, seq, target = target, beta = beta, method = 'dSDT')
 
         return nS, dS, [DT_conv, DT_fc], seq        
-        
-        
-        
-
+       
 
 def compute_NT(net, data, target, wholeProcess = True):
 

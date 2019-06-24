@@ -289,8 +289,14 @@ if __name__ == '__main__':
         plot_S(nS, dS)
         plt.show()
         NT = compute_NT(net, x, target)
-        #instNT, instDT = computeInstantaneousTheta(NT, DT)
-        plot_T(NT, DT, args)
+	    
+        if not net.cep:
+            nT, dT = compute_nTdT(NT, DT)
+        else:
+            nT, _ = compute_nTdT(NT, DT)
+            dT = DT
+
+        plot_T(nT, dT, args)
         plt.show()
         
         #create path              
@@ -299,7 +305,7 @@ if __name__ == '__main__':
         #save hyperparameters
         createHyperparameterfile(BASE_PATH, name, args)
         
-        results_dict = {'nS' : nS, 'dS' : dS, 'NT': NT, 'DT': DT, 'args': args}
+        results_dict = {'nS' : nS, 'dS' : dS, 'nT': nT, 'dT': dT, 'args': args}
                           
         outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
         pickle.dump(results_dict, outfile)

@@ -431,12 +431,12 @@ if __name__ == '__main__':
     if 'nS' in results_dict:
         nS = results_dict['nS']
         dS = results_dict['dS']
-        NT = results_dict['NT']
-        DT = results_dict['DT']
+        nT = results_dict['nT']
+        dT = results_dict['dT']
         args = results_dict['args'] 
-        nT, dT = compute_nTdT(NT, DT)    
-        hist_S, hist_T = compute_Hist(nS, dS, NT, DT)
-        plot_Hist(hist_S, hist_T, NT, args)   
+        #nT, dT = compute_nTdT(NT, DT)    
+        hist_S, hist_T = compute_Hist(nS, dS, nT, dT)
+        plot_Hist(hist_S, hist_T, nT, args)   
         plt.show()
         plot_S(nS, dS)
                   
