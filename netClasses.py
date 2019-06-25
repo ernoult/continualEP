@@ -60,7 +60,6 @@ class VFcont(nn.Module):
         dsdt.append(-s[-1] + self.w[-1](rho(data)) + self.w[-2](rho(s[-2])))
        
 
-
         s_old = []
         for ind, s_temp in enumerate(s):
             s_old.append(s_temp.clone())
@@ -74,17 +73,18 @@ class VFcont(nn.Module):
                 dsdt[i] = torch.where((s[i] == 0)|(s[i] ==1), torch.zeros_like(dsdt[i], device = self.device), dsdt[i])
 
         #*****************************C-EP*****************************#
-        if (self.cep) & (beta > 0):
-            with torch.no_grad(): 
-                dthetadt = self.updateWeights(self.beta, data, s, s_old)
-                                             
-        if return_derivatives:
-            if not self.cep:           
-                return s, dsdt
+        if (beta > 0):
+            dw = self.computeGradients(data, s, s_old)
+            if self.cep:
+                with torch.no_grad(): 
+                    self.updateWeights(dw)
+                                                 
+            if return_derivatives:
+                return s, dsdt, dw
             else:
-                return s, dsdt, dthetadt
+                return s, dw
         else:
-            return s
+            return s 
         #**************************************************************#
     
     def forward(self, data, s, seq = None, method = 'nograd',  beta = 0, target = None, **kwargs):
@@ -106,13 +106,26 @@ class VFcont(nn.Module):
             return s
                 
         elif (method == 'nograd'):
+
+            #*************ADD GRADIENT ACCUMULATION HERE*************#
             if beta == 0:
                 for t in range(T):                      
                     s = self.stepper(data, s)
+                return s
             else:
-                for t in range(Kmax):                      
-                    s = self.stepper(data, s, target, beta)
-            return s                   
+                Dw = self.initGrad()                                          
+                for t in range(Kmax):
+                    s, dw = self.stepper(data, s, target, beta)
+
+                    
+                    with torch.no_grad():
+                        for ind_type, dw_temp in enumerate(dw):
+                            for ind, dw_temp_layer in enumerate(dw_temp):
+                                if dw_temp_layer is not None:
+                                    Dw[ind_type][ind] += dw_temp_layer
+
+                return s, Dw     
+            #********************************************************#              
                     
         elif (method == 'nS'):
             s_tab = []
@@ -149,7 +162,7 @@ class VFcont(nn.Module):
                
             return s, nS     
             
-        elif (method == 'dSDT'):
+        elif (method == 'dSdT'):
 
                 DT = []
 
@@ -159,65 +172,57 @@ class VFcont(nn.Module):
                     else:
                         DT.append(None)        
                 
-
                 dS = []
                 for i in range(self.ns):
                     dS.append(torch.zeros(Kmax, 1, self.size_tab[i], device = self.device))              
                 
                 #*******************************************C-EP*******************************************#
                
-                if not self.cep:    
-                    for t in range(Kmax):
-                        s, dsdt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
+                for t in range(Kmax):
+                    s, dsdt, dw = self.stepper(data, s, target, beta, return_derivatives = True)
+                    ###############################dS COMPUTATION#####################################
+                    for i in range(self.ns):
+                        if (t < i):
+                            dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
+                        else:
+                            dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
+                    ######################################################################################
 
-                        ####################DT COMPUTATION##################
-                        gradw, _ = self.computeGradients(beta, data, s, seq)
-                        for i in range(len(gradw)):
-                            if gradw[i] is not None:
-                                DT[i][t, :, :] = - gradw[i]
-                        #####################################################
-
-                else:
-                    for t in range(Kmax):
-                        s, dsdt, dthetadt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
-
-                        ####################dT COMPUTATION##################
-                        for i in range(len(dthetadt)):
-                            if (dthetadt[i] is not None) & (t > 0):
-                                DT[i][t, :, :] = - dthetadt[i]
-                        #####################################################       
+                    ####################dT COMPUTATION##################
+                    for ind, dw_temp in enumerate(dw[0]):
+                        if (dw_temp is not None) & (t > 0):
+                            DT[ind][t, :, :] = - dw_temp
+                    #####################################################       
 
                 #******************************************************************************************#             
-                                                       
-                                                                             
+                                                                                                                                   
         return s, dS, DT
-        
-        
+                
     def initHidden(self, batch_size):
         s = []
         for i in range(self.ns):
             s.append(torch.zeros(batch_size, self.size_tab[i], requires_grad = True))            
         return s
-        
+
+    #**************************NEW**************************#    
+    def initGrad(self):
+        gradw = []
+        gradw_bias =[]
+        for ind, w_temp in enumerate(self.w):
+            gradw.append(torch.zeros_like(w_temp.weight))
+            if w_temp.bias is not None:
+                gradw_bias.append(torch.zeros_like(w_temp.bias))
+            else:
+                gradw_bias.append(None)
+
+        return gradw, gradw_bias
+    #*******************************************************#
               
-    def computeGradients(self, beta, data, s, seq):
+    def computeGradients(self, data, s, seq):
         gradw = []
         gradw_bias = []
         batch_size = s[0].size(0)
+        beta = self.beta
                
         for i in range(self.ns - 1):                
             gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(s[i] - seq[i], 0, 1), rho(seq[i + 1]))) 
@@ -231,20 +236,16 @@ class VFcont(nn.Module):
 
         return  gradw, gradw_bias
 
-  
-    def updateWeights(self, beta, data, s, seq):
-        gradw, gradw_bias = self.computeGradients(beta, data, s, seq)
+    #**************************NEW**************************# 
+    def updateWeights(self, gradw):
         lr_tab = self.lr_tab
         for i in range(len(self.w)):
             if self.w[i] is not None:
-                self.w[i].weight += lr_tab[int(np.floor(i/2))]*gradw[i]
-            if gradw_bias[i] is not None:
-                self.w[i].bias += lr_tab[int(np.floor(i/2))]*gradw_bias[i] 
-
-        #******C-EP******#
-        if self.cep:
-            return gradw
-        #****************#    
+                self.w[i].weight += lr_tab[int(np.floor(i/2))]*gradw[0][i]
+            if gradw[1][i] is not None:
+                self.w[i].bias += lr_tab[int(np.floor(i/2))]*gradw[1][i]
+    #*******************************************************#
+       
 
 
 #*****************************VF, prototypical *********************************#
@@ -304,17 +305,18 @@ class VFdisc(nn.Module):
             s[i] = s[i] + self.dt*dsdt[i]
 
         #*****************************C-EP*****************************#
-        if (self.cep) & (beta > 0):
-            with torch.no_grad(): 
-                dthetadt = self.updateWeights(self.beta, data, s, s_old)
-                                             
-        if return_derivatives:
-            if not self.cep:           
-                return s, dsdt
+        if (beta > 0):
+            dw = self.computeGradients(data, s, s_old)
+            if self.cep:
+                with torch.no_grad(): 
+                    self.updateWeights(dw)
+                                                 
+            if return_derivatives:
+                return s, dsdt, dw
             else:
-                return s, dsdt, dthetadt
+                return s, dw
         else:
-            return s
+            return s 
         #**************************************************************#
     
     def forward(self, data, s, seq = None, method = 'nograd',  beta = 0, target = None, **kwargs):
@@ -336,13 +338,25 @@ class VFdisc(nn.Module):
             return s
                 
         elif (method == 'nograd'):
+            #*************ADD GRADIENT ACCUMULATION HERE*************#
             if beta == 0:
                 for t in range(T):                      
                     s = self.stepper(data, s)
+                return s
             else:
-                for t in range(Kmax):                      
-                    s = self.stepper(data, s, target, beta)
-            return s                   
+                Dw = self.initGrad()                                          
+                for t in range(Kmax):
+                    s, dw = self.stepper(data, s, target, beta)
+
+                    
+                    with torch.no_grad():
+                        for ind_type, dw_temp in enumerate(dw):
+                            for ind, dw_temp_layer in enumerate(dw_temp):
+                                if dw_temp_layer is not None:
+                                    Dw[ind_type][ind] += dw_temp_layer
+
+                return s, Dw     
+            #********************************************************#                 
                     
         elif (method == 'nS'):
             s_tab = []
@@ -378,7 +392,7 @@ class VFdisc(nn.Module):
                
             return s, nS     
             
-        elif (method == 'dSDT'):
+        elif (method == 'dSdT'):
 
                 DT = []
 
@@ -396,42 +410,23 @@ class VFdisc(nn.Module):
                     
                 #*******************************************C-EP*******************************************#
                
-                if not self.cep:    
-                    for t in range(Kmax):
-                        s, dsdt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
+                for t in range(Kmax):
+                    s, dsdt, dw = self.stepper(data, s, target, beta, return_derivatives = True)
+                    ###############################dS COMPUTATION#####################################
+                    for i in range(self.ns):
+                        if (t < i):
+                            dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
+                        else:
+                            dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
+                    ######################################################################################
 
-                        ####################DT COMPUTATION##################
-                        gradw, _ = self.computeGradients(beta, data, s, seq)
-                        for i in range(len(gradw)):
-                            if gradw[i] is not None:
-                                DT[i][t, :, :] = - gradw[i]
-                        #####################################################
+                    ####################dT COMPUTATION##################
+                    for ind, dw_temp in enumerate(dw[0]):
+                        if (dw_temp is not None) & (t > 0):
+                            DT[ind][t, :, :] = - dw_temp
+                    #####################################################       
 
-                else:
-                    for t in range(Kmax):
-                        s, dsdt, dthetadt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
-
-                        ####################dT COMPUTATION##################
-                        for i in range(len(dthetadt)):
-                            if (dthetadt[i] is not None) & (t > 0):
-                                DT[i][t, :, :] = - dthetadt[i]
-                        #####################################################       
-
-                #******************************************************************************************# 
+                #******************************************************************************************#   
                                                        
                                                                              
         return s, dS, DT
@@ -442,11 +437,25 @@ class VFdisc(nn.Module):
         for i in range(self.ns):
             s.append(torch.zeros(batch_size, self.size_tab[i], requires_grad = True))            
         return s
-        
+ 
+    #**************************NEW**************************#    
+    def initGrad(self):
+        gradw = []
+        gradw_bias =[]
+        for ind, w_temp in enumerate(self.w):
+            gradw.append(torch.zeros_like(w_temp.weight))
+            if w_temp.bias is not None:
+                gradw_bias.append(torch.zeros_like(w_temp.bias))
+            else:
+                gradw_bias.append(None)
+
+        return gradw, gradw_bias
+    #*******************************************************#       
               
-    def computeGradients(self, beta, data, s, seq):
+    def computeGradients(self, data, s, seq):
         gradw = []
         gradw_bias = []
+        beta = self.beta
         batch_size = s[0].size(0)
                    
         for i in range(self.ns - 1):                
@@ -461,20 +470,16 @@ class VFdisc(nn.Module):
                                                                                                                                                                        
         return  gradw, gradw_bias
 
-  
-    def updateWeights(self, beta, data, s, seq):
-        gradw, gradw_bias = self.computeGradients(beta, data, s, seq)
+    #**************************NEW**************************# 
+    def updateWeights(self, gradw):
+
         lr_tab = self.lr_tab
         for i in range(len(self.w)):
             if self.w[i] is not None:
-                self.w[i].weight += lr_tab[int(np.floor(i/2))]*gradw[i]
-            if gradw_bias[i] is not None:
-                self.w[i].bias += lr_tab[int(np.floor(i/2))]*gradw_bias[i] 
-
-        #******C-EP******#
-        if self.cep:
-            return gradw
-        #****************#   
+                self.w[i].weight += lr_tab[int(np.floor(i/2))]*gradw[0][i]
+            if gradw[1][i] is not None:
+                self.w[i].bias += lr_tab[int(np.floor(i/2))]*gradw[1][i]
+    #*******************************************************# 
 
 
 #*****************************toy model, VF, energy-based *********************************#
@@ -556,17 +561,18 @@ class toyVFcont(nn.Module):
                 dsdt[i] = torch.where((s[i] == 0)|(s[i] ==1), torch.zeros_like(dsdt[i], device = self.device), dsdt[i])
 
         #*****************************C-EP*****************************#
-        if (self.cep) & (beta > 0):
-            with torch.no_grad(): 
-                dthetadt = self.updateWeights(self.beta, data, s, s_old)
-                                             
-        if return_derivatives:
-            if not self.cep:           
-                return s, dsdt
+        if (beta > 0):
+            dw = self.computeGradients(data, s, s_old)
+            if self.cep:
+                with torch.no_grad(): 
+                    self.updateWeights(dw)
+                                                 
+            if return_derivatives:
+                return s, dsdt, dw
             else:
-                return s, dsdt, dthetadt
+                return s, dw
         else:
-            return s
+            return s 
         #**************************************************************#
     
     def forward(self, data, s, seq = None, method = 'nograd',  beta = 0, target = None, **kwargs):
@@ -588,13 +594,26 @@ class toyVFcont(nn.Module):
             return s
                 
         elif (method == 'nograd'):
+
+            #*************ADD GRADIENT ACCUMULATION HERE*************#
             if beta == 0:
                 for t in range(T):                      
                     s = self.stepper(data, s)
+                return s
             else:
-                for t in range(Kmax):                      
-                    s = self.stepper(data, s, target, beta)
-            return s                   
+                Dw = self.initGrad()                                          
+                for t in range(Kmax):
+                    s, dw = self.stepper(data, s, target, beta)
+
+                    
+                    with torch.no_grad():
+                        for ind_type, dw_temp in enumerate(dw):
+                            for ind, dw_temp_layer in enumerate(dw_temp):
+                                if dw_temp_layer is not None:
+                                    Dw[ind_type][ind] += dw_temp_layer
+
+                return s, Dw     
+            #********************************************************#                  
                     
         elif (method == 'nS'):
             s_tab = []
@@ -629,7 +648,7 @@ class toyVFcont(nn.Module):
                 ####################################################################################
             return s, nS     
             
-        elif (method == 'dSDT'):
+        elif (method == 'dSdT'):
 
                 DT = []
 
@@ -647,42 +666,23 @@ class toyVFcont(nn.Module):
                     
                 #*******************************************C-EP*******************************************#
                
-                if not self.cep:    
-                    for t in range(Kmax):
-                        s, dsdt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
+                for t in range(Kmax):
+                    s, dsdt, dw = self.stepper(data, s, target, beta, return_derivatives = True)
+                    ###############################dS COMPUTATION#####################################
+                    for i in range(self.ns):
+                        if (t < i):
+                            dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
+                        else:
+                            dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
+                    ######################################################################################
 
-                        ####################DT COMPUTATION##################
-                        gradw, _ = self.computeGradients(beta, data, s, seq)
-                        for i in range(len(gradw)):
-                            if gradw[i] is not None:
-                                DT[i][t, :, :] = - gradw[i]
-                        #####################################################
+                    ####################dT COMPUTATION##################
+                    for ind, dw_temp in enumerate(dw[0]):
+                        if (dw_temp is not None) & (t > 0):
+                            DT[ind][t, :, :] = - dw_temp
+                    #####################################################       
 
-                else:
-                    for t in range(Kmax):
-                        s, dsdt, dthetadt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
-
-                        ####################dT COMPUTATION##################
-                        for i in range(len(dthetadt)):
-                            if (dthetadt[i] is not None) & (t > 0):
-                                DT[i][t, :, :] = - dthetadt[i]
-                        #####################################################       
-
-                #******************************************************************************************# 
+                #******************************************************************************************#   
                                                        
                                                                              
         return s, dS, DT
@@ -694,11 +694,26 @@ class toyVFcont(nn.Module):
             s.append(torch.zeros(batch_size, self.size_tab[i], requires_grad = True))            
         return s
         
+    #**************************NEW**************************#    
+    def initGrad(self):
+        gradw = []
+        gradw_bias =[]
+        for ind, w_temp in enumerate(self.w):
+            gradw.append(torch.zeros_like(w_temp.weight))
+            if w_temp.bias is not None:
+                gradw_bias.append(torch.zeros_like(w_temp.bias))
+            else:
+                gradw_bias.append(None)
+
+        return gradw, gradw_bias
+    #*******************************************************#  
+
               
-    def computeGradients(self, beta, data, s, seq):
+    def computeGradients(self, data, s, seq):
         gradw = []
         gradw_bias = []
         batch_size = s[0].size(0)
+        beta = self.beta
 
         gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(s[0] - seq[0], 0, 1), rho(seq[0])))
         gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(s[0] - seq[0], 0, 1), rho(seq[1])))
@@ -711,17 +726,15 @@ class toyVFcont(nn.Module):
         return  gradw, gradw_bias
 
   
-    def updateWeights(self, beta, data, s, seq):
-        gradw, gradw_bias = self.computeGradients(beta, data, s, seq)
+    #**************************NEW**************************# 
+    def updateWeights(self, gradw):
+
         lr_tab = self.lr_tab
         for i in range(len(self.w)):
             if self.w[i] is not None:
-                self.w[i].weight += lr_tab[0]*gradw[i] 
+                self.w[i].weight += lr_tab[0]*gradw[0][i]
+    #*******************************************************# 
 
-        #******C-EP******#
-        if self.cep:
-            return gradw
-        #****************#   
 
 
 #*****************************toy model, VF, prototypical *********************************#
@@ -791,24 +804,25 @@ class toyVFdisc(nn.Module):
         dsdt.append(-s[1] + rho(self.w[3](s[1]) + self.w[4](data) + self.w[5](s[0])))
 
         s_old = []
-        for ind, s_temp in enumerate(s):
+        for s_temp in s:
             s_old.append(s_temp.clone())
 
         for i in range(self.ns):
             s[i] = s[i] + self.dt*dsdt[i]
 
         #*****************************C-EP*****************************#
-        if (self.cep) & (beta > 0):
-            with torch.no_grad(): 
-                dthetadt = self.updateWeights(self.beta, data, s, s_old)
-                                             
-        if return_derivatives:
-            if not self.cep:           
-                return s, dsdt
+        if (beta > 0):
+            dw = self.computeGradients(data, s, s_old)
+            if self.cep:
+                with torch.no_grad(): 
+                    self.updateWeights(dw)
+                                                 
+            if return_derivatives:
+                return s, dsdt, dw
             else:
-                return s, dsdt, dthetadt
+                return s, dw
         else:
-            return s
+            return s 
         #**************************************************************#
     
     def forward(self, data, s, seq = None, method = 'nograd',  beta = 0, target = None, **kwargs):
@@ -830,13 +844,24 @@ class toyVFdisc(nn.Module):
             return s
                 
         elif (method == 'nograd'):
+            #*************ADD GRADIENT ACCUMULATION HERE*************#
             if beta == 0:
                 for t in range(T):                      
                     s = self.stepper(data, s)
+                return s
             else:
-                for t in range(Kmax):                      
-                    s = self.stepper(data, s, target, beta)
-            return s                   
+                Dw = self.initGrad()                                          
+                for t in range(Kmax):
+                    s, dw = self.stepper(data, s, target, beta)
+                    
+                    with torch.no_grad():
+                        for ind_type, dw_temp in enumerate(dw):
+                            for ind, dw_temp_layer in enumerate(dw_temp):
+                                if dw_temp_layer is not None:
+                                    Dw[ind_type][ind] += dw_temp_layer
+
+                return s, Dw     
+            #********************************************************#                  
                     
         elif (method == 'nS'):
             s_tab = []
@@ -871,7 +896,7 @@ class toyVFdisc(nn.Module):
                 ####################################################################################
             return s, nS     
             
-        elif (method == 'dSDT'):
+        elif (method == 'dSdT'):
 
                 DT = []
 
@@ -889,42 +914,23 @@ class toyVFdisc(nn.Module):
                     
                 #*******************************************C-EP*******************************************#
                
-                if not self.cep:    
-                    for t in range(Kmax):
-                        s, dsdt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
+                for t in range(Kmax):
+                    s, dsdt, dw = self.stepper(data, s, target, beta, return_derivatives = True)
+                    ###############################dS COMPUTATION#####################################
+                    for i in range(self.ns):
+                        if (t < i):
+                            dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
+                        else:
+                            dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
+                    ######################################################################################
 
-                        ####################DT COMPUTATION##################
-                        gradw, _ = self.computeGradients(beta, data, s, seq)
-                        for i in range(len(gradw)):
-                            if gradw[i] is not None:
-                                DT[i][t, :, :] = - gradw[i]
-                        #####################################################
+                    ####################dT COMPUTATION##################
+                    for ind, dw_temp in enumerate(dw[0]):
+                        if (dw_temp is not None) & (t > 0):
+                            DT[ind][t, :, :] = - dw_temp
+                    #####################################################       
 
-                else:
-                    for t in range(Kmax):
-                        s, dsdt, dthetadt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
-
-                        ####################dT COMPUTATION##################
-                        for i in range(len(dthetadt)):
-                            if (dthetadt[i] is not None) & (t > 0):
-                                DT[i][t, :, :] = - dthetadt[i]
-                        #####################################################       
-
-                #******************************************************************************************# 
+                #******************************************************************************************#
                                                        
                                                                              
         return s, dS, DT
@@ -935,12 +941,27 @@ class toyVFdisc(nn.Module):
         for i in range(self.ns):
             s.append(torch.zeros(batch_size, self.size_tab[i], requires_grad = True))            
         return s
+
+    #**************************NEW**************************#    
+    def initGrad(self):
+        gradw = []
+        gradw_bias =[]
+        for ind, w_temp in enumerate(self.w):
+            gradw.append(torch.zeros_like(w_temp.weight))
+            if w_temp.bias is not None:
+                gradw_bias.append(torch.zeros_like(w_temp.bias))
+            else:
+                gradw_bias.append(None)
+
+        return gradw, gradw_bias
+    #*******************************************************#  
         
               
-    def computeGradients(self, beta, data, s, seq):
+    def computeGradients(self, data, s, seq):
         gradw = []
         gradw_bias = []
         batch_size = s[0].size(0)
+        beta = self.beta
 
         gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(torch.mul(1 - seq[0]**2, s[0] - seq[0]), 0, 1), seq[0]))
         gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(torch.mul(1 - seq[0]**2, s[0] - seq[0]), 0, 1), seq[1]))
@@ -952,19 +973,14 @@ class toyVFdisc(nn.Module):
         return  gradw, gradw_bias
 
   
-    def updateWeights(self, beta, data, s, seq):
-        gradw, gradw_bias = self.computeGradients(beta, data, s, seq)
+    #**************************NEW**************************# 
+    def updateWeights(self, gradw):
+
         lr_tab = self.lr_tab
         for i in range(len(self.w)):
             if self.w[i] is not None:
-                self.w[i].weight += lr_tab[0]*gradw[i]
-            if gradw_bias[i] is not None:
-                self.w[i].bias += lr_tab[0]*gradw_bias[i]
-
-        #******C-EP******#
-        if self.cep:
-            return gradw
-        #****************#   
+                self.w[i].weight += lr_tab[0]*gradw[0][i]
+    #*******************************************************#  
 
 #*****************************EP, energy based *********************************#
 
@@ -1026,14 +1042,14 @@ class EPcont(nn.Module):
 
         #*****************************C-EP*****************************#
         if (self.cep) & (beta > 0):
-            with torch.no_grad(): 
-                dthetadt = self.updateWeights(self.beta, data, s, s_old)
+            dw = self.computeGradients(data, s, s_old)
+            if self.cep:
+                with torch.no_grad(): 
+                    self.updateWeights(dw)
                                              
         if return_derivatives:
-            if not self.cep:           
-                return s, dsdt
-            else:
-                return s, dsdt, dthetadt
+            dw = self.computeGradients(data, s, s_old)
+            return s, dsdt, dw
         else:
             return s
         #**************************************************************#
@@ -1100,7 +1116,7 @@ class EPcont(nn.Module):
 
             return s, nS     
             
-        elif (method == 'dSDT'):               
+        elif (method == 'dSdT'):               
                 DT = []
                 for i in range(len(self.w)):
                     if self.w[i] is not None:
@@ -1114,42 +1130,23 @@ class EPcont(nn.Module):
                     
                 #*******************************************C-EP*******************************************#
                
-                if not self.cep:    
-                    for t in range(Kmax):
-                        s, dsdt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
+                for t in range(Kmax):
+                    s, dsdt, dw = self.stepper(data, s, target, beta, return_derivatives = True)
+                    ###############################dS COMPUTATION#####################################
+                    for i in range(self.ns):
+                        if (t < i):
+                            dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
+                        else:
+                            dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
+                    ######################################################################################
 
-                        ####################DT COMPUTATION##################
-                        gradw, _ = self.computeGradients(beta, data, s, seq)
-                        for i in range(len(gradw)):
-                            if gradw[i] is not None:
-                                DT[i][t, :, :] = - gradw[i]
-                        #####################################################
+                    ####################dT COMPUTATION##################
+                    for ind, dw_temp in enumerate(dw[0]):
+                        if (dw_temp is not None) & (t > 0):
+                            DT[ind][t, :, :] = - dw_temp
+                    #####################################################       
 
-                else:
-                    for t in range(Kmax):
-                        s, dsdt, dthetadt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
-
-                        ####################dT COMPUTATION##################
-                        for i in range(len(dthetadt)):
-                            if (dthetadt[i] is not None) & (t > 0):
-                                DT[i][t, :, :] = - dthetadt[i]
-                        #####################################################       
-
-                #******************************************************************************************# 
+                #******************************************************************************************#
                                                        
                                                                              
         return s, dS, DT
@@ -1162,10 +1159,11 @@ class EPcont(nn.Module):
         return s
         
               
-    def computeGradients(self, beta, data, s, seq):
+    def computeGradients(self, data, s, seq):
         gradw = []
         gradw_bias = []
         batch_size = s[0].size(0)
+        beta = self.beta
              
         for i in range(self.ns - 1):
             gradw.append((1/(beta*batch_size))*(torch.mm(torch.transpose(rho(s[i]), 0, 1), rho(s[i + 1])) - torch.mm(torch.transpose(rho(seq[i]), 0, 1), rho(seq[i + 1])))) 
@@ -1179,49 +1177,58 @@ class EPcont(nn.Module):
         return  gradw, gradw_bias
 
   
-    def updateWeights(self, beta, data, s, seq):
-        gradw, gradw_bias = self.computeGradients(beta, data, s, seq)
+    #**************************NEW**************************# 
+    def updateWeights(self, gradw):
+
         lr_tab = self.lr_tab
         for i in range(len(self.w)):
             if self.w[i] is not None:
-                self.w[i].weight += lr_tab[int(np.floor(i/2))]*gradw[i]
-            if gradw_bias[i] is not None:
-                self.w[i].bias += lr_tab[int(np.floor(i/2))]*gradw_bias[i] 
-
-        #******C-EP******#
-        if self.cep:
-            return gradw
-        #****************# 
+                self.w[i].weight += lr_tab[int(np.floor(i/2))]*gradw[0][i]
+            if gradw[1][i] is not None:
+                self.w[i].bias += lr_tab[int(np.floor(i/2))]*gradw[1][i]
+    #*******************************************************#  
 
 #*****************************EP, prototypical *********************************#
 
 class EPdisc(nn.Module):
-    def __init__(self, device_label, size_tab, lr_tab, T, Kmax, beta, dt = 1, cep = False):
+    def __init__(self, args):
         super(EPdisc, self).__init__()
-        self.T = T
-        self.Kmax = Kmax        
-        self.dt = dt
-        self.size_tab = size_tab
-        self.lr_tab = lr_tab
-        self.ns = len(size_tab) - 1
+
+                
+        self.T = args.T
+        self.Kmax = args.Kmax        
+        self.dt = 1
+        self.size_tab = args.size_tab
+        self.lr_tab = args.lr_tab
+        self.ns = len(args.size_tab) - 1
         self.nsyn = 2*(self.ns - 1) + 1
-        self.cep = cep
-        if device_label >= 0:    
-            device = torch.device("cuda:"+str(device_label)+")")
+        self.cep = args.cep
+        if args.device_label >= 0:    
+            device = torch.device("cuda:"+str(args.device_label)+")")
             self.cuda = True
         else:
             device = torch.device("cpu")
             self.cuda = False   
         self.device = device
-        self.beta = beta
+        self.beta = args.beta
+
+        #**************DEBUG C-EP**************#
+        self.debug = args.debug
+        if args.debug:
+            lr_tab_debug = []
+            for lr in self.lr_tab:
+                lr_tab_debug.append(10**(-9)*lr)
+            self.lr_tab_debug = lr_tab_debug
+        #**************************************#
+        
 
         w = nn.ModuleList([])
                            
         for i in range(self.ns - 1):
-            w.append(nn.Linear(size_tab[i + 1], size_tab[i], bias = True))
+            w.append(nn.Linear(args.size_tab[i + 1], args.size_tab[i], bias = True))
             w.append(None)
             
-        w.append(nn.Linear(size_tab[-1], size_tab[-2]))                             
+        w.append(nn.Linear(args.size_tab[-1], args.size_tab[-2]))                             
         self.w = w
         self = self.to(device)
 
@@ -1245,14 +1252,18 @@ class EPdisc(nn.Module):
 
         #*****************************C-EP*****************************#
         if (self.cep) & (beta > 0):
-            with torch.no_grad(): 
-                dthetadt = self.updateWeights(self.beta, data, s, s_old)
-                                             
+            dw = self.computeGradients(data, s, s_old)
+            if (self.cep) & (not self.debug):
+                with torch.no_grad(): 
+                    self.updateWeights(dw)
+
+            elif (self.cep) & (self.debug):
+                with torch.no_grad(): 
+                    self.updateWeights(dw, debug = True)  
+                         
         if return_derivatives:
-            if not self.cep:           
-                return s, dsdt
-            else:
-                return s, dsdt, dthetadt
+            dw = self.computeGradients(data, s, s_old)
+            return s, dsdt, dw
         else:
             return s
         #**************************************************************#
@@ -1279,10 +1290,25 @@ class EPdisc(nn.Module):
             if beta == 0:
                 for t in range(T):                      
                     s = self.stepper(data, s)
-            else:
+                return s
+
+            elif (beta > 0) & (not self.debug):
                 for t in range(Kmax):                      
                     s = self.stepper(data, s, target, beta)
-            return s                   
+                return s
+             
+            elif (beta > 0) & (self.debug):
+                Dw = self.initGrad()                                          
+                for t in range(Kmax):
+                    s, _, dw = self.stepper(data, s, target, beta, return_derivatives = True)
+                    
+                    with torch.no_grad():
+                        for ind_type, dw_temp in enumerate(dw):
+                            for ind, dw_temp_layer in enumerate(dw_temp):
+                                if dw_temp_layer is not None:
+                                    Dw[ind_type][ind] += dw_temp_layer
+
+                return s, Dw                     
                     
         elif (method == 'nS'):
             s_tab = []
@@ -1320,7 +1346,7 @@ class EPdisc(nn.Module):
                
             return s, nS     
             
-        elif (method == 'dSDT'):
+        elif (method == 'dSdT'):
 
                 DT = []
 
@@ -1338,42 +1364,23 @@ class EPdisc(nn.Module):
                     
                 #*******************************************C-EP*******************************************#
                
-                if not self.cep:    
-                    for t in range(Kmax):
-                        s, dsdt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
+                for t in range(Kmax):
+                    s, dsdt, dw = self.stepper(data, s, target, beta, return_derivatives = True)
+                    ###############################dS COMPUTATION#####################################
+                    for i in range(self.ns):
+                        if (t < i):
+                            dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
+                        else:
+                            dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
+                    ######################################################################################
 
-                        ####################DT COMPUTATION##################
-                        gradw, _ = self.computeGradients(beta, data, s, seq)
-                        for i in range(len(gradw)):
-                            if gradw[i] is not None:
-                                DT[i][t, :, :] = - gradw[i]
-                        #####################################################
+                    ####################dT COMPUTATION##################
+                    for ind, dw_temp in enumerate(dw[0]):
+                        if (dw_temp is not None) & (t > 0):
+                            DT[ind][t, :, :] = - dw_temp
+                    #####################################################       
 
-                else:
-                    for t in range(Kmax):
-                        s, dsdt, dthetadt = self.stepper(data, s, target, beta, return_derivatives = True)
-                        ###############################dS COMPUTATION#####################################
-                        for i in range(self.ns):
-                            if (t < i):
-                                dS[i][t, :, :] = torch.zeros_like(dS[i][t, :, :])
-                            else:
-                                dS[i][t, :, :] = -(1/(beta*s[i].size(0)))*dsdt[i].sum(0).unsqueeze(0)                        
-                        ######################################################################################
-
-                        ####################dT COMPUTATION##################
-                        for i in range(len(dthetadt)):
-                            if (dthetadt[i] is not None) & (t > 0):
-                                DT[i][t, :, :] = - dthetadt[i]
-                        #####################################################       
-
-                #******************************************************************************************# 
+                #******************************************************************************************#
                                                        
                                                                              
         return s, dS, DT
@@ -1384,12 +1391,27 @@ class EPdisc(nn.Module):
         for i in range(self.ns):
             s.append(torch.zeros(batch_size, self.size_tab[i], requires_grad = True))            
         return s
-        
+
+    #**************************NEW**************************#    
+    def initGrad(self):
+        gradw = []
+        gradw_bias =[]
+        for w_temp in self.w:
+            if w_temp is not None:
+                gradw.append(torch.zeros_like(w_temp.weight))
+                gradw_bias.append(torch.zeros_like(w_temp.bias))
+            else:
+                gradw.append(None)
+                gradw_bias.append(None)
+
+        return gradw, gradw_bias
+    #*******************************************************#          
               
-    def computeGradients(self, beta, data, s, seq):
+    def computeGradients(self, data, s, seq):
         gradw = []
         gradw_bias = []
         batch_size = s[0].size(0)
+        beta = self.beta
 
                 
         for i in range(self.ns - 1):
@@ -1404,19 +1426,19 @@ class EPdisc(nn.Module):
         return  gradw, gradw_bias
 
   
-    def updateWeights(self, beta, data, s, seq):
-        gradw, gradw_bias = self.computeGradients(beta, data, s, seq)
-        lr_tab = self.lr_tab
+    #**************************NEW**************************# 
+    def updateWeights(self, gradw, debug = False):
+        if not self.debug:
+            lr_tab = self.lr_tab
+        else:
+            lr_tab = self.lr_tab_debug
+
         for i in range(len(self.w)):
             if self.w[i] is not None:
-                self.w[i].weight += lr_tab[int(np.floor(i/2))]*gradw[i]
-            if gradw_bias[i] is not None:
-                self.w[i].bias += lr_tab[int(np.floor(i/2))]*gradw_bias[i]
-
-        #******C-EP******#
-        if self.cep:
-            return gradw
-        #****************# 
+                self.w[i].weight += lr_tab[int(np.floor(i/2))]*gradw[0][i]
+            if gradw[1][i] is not None:
+                self.w[i].bias += lr_tab[int(np.floor(i/2))]*gradw[1][i]
+    #*******************************************************#  
 
 
 

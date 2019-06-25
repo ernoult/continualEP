@@ -1,9 +1,11 @@
+
+#*****************THEOREM*****************#
+
 #Theorem, toymodel, energy based, toymodel, VF
 python main.py --action 'plotcurves' --toymodel --no-clamp --batch-size 1 --size_tab 10 50 5 --activation-function 'tanh' --dt 0.08 --beta 0.01 --T 5000 --Kmax 80 --learning-rule 'vf'
 
 #Theorem, toymodel, energy based, toymodel, C-VF
 python main.py --action 'plotcurves' --toymodel --no-clamp --batch-size 1 --size_tab 10 50 5 --activation-function 'tanh' --dt 0.08 --beta 0.01 --T 5000 --Kmax 80 --learning-rule 'vf' --lr_tab 0.00002 0.00002 --cep
-
 
 #Theorem, energy based, 1 hidden layer, EP
 python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80
@@ -18,13 +20,11 @@ python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512
 #Theorem, energy based, 1 hidden layer, C-VF
 python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --learning-rule 'vf' --lr_tab 0.00002 0.00002 --cep
 
-
 #Theorem, prototypical, 1 hidden layer, EP
 python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'ep'
 
 #Theorem, prototypical, 1 hidden layer, C-EP
 python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'ep' --lr_tab 0.00002 0.00002 --cep
-
 
 #Theorem, prototypical, 1 hidden layer, VF
 python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'vf'
@@ -32,10 +32,28 @@ python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512
 #Theorem, prototypical, 1 hidden layer, C-VF
 python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'vf' --lr_tab 0.00002 0.00002 --cep
 
+#*****************TRAINING*****************#
+
+#Training prototypical, 1 hidden layer, EP
+python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.04 0.08 --epochs 30 --T 40 --Kmax 15 --beta 0.1
 
 #Training, prototypical, 1 hidden layer, C-EP
 python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0004 0.0008 --epochs 30 --T 40 --Kmax 15 --beta 0.1 --cep
 
+#Training prototypical, 1 hidden layer, VF
+python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.04 0.08 --epochs 30 --T 40 --Kmax 15 --beta 0.1 --learning-rule 'vf'
+
 #Training, prototypical, 1 hidden layer, C-VF
 python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0004 0.0008 --epochs 30 --T 40 --Kmax 15 --beta 0.1 --cep --learning-rule 'vf'
 
+#Training, energy-based, 1 hidden layer, EP
+python main.py --action 'train' --size_tab 10 512 784 --lr_tab 0.05 0.1 --epochs 30 --T 100 --Kmax 12 --beta 0.5 --dt 0.2
+
+#Training, energy-based, 1 hidden layer, C-EP
+python main.py --action 'train' --size_tab 10 512 784 --lr_tab 0.0005 0.001 --epochs 30 --T 100 --Kmax 12 --beta 0.5 --dt 0.2 --cep
+
+#Training, energy-based, 1 hidden layer, VF
+python main.py --action 'train' --size_tab 10 512 784 --lr_tab 0.05 0.1 --epochs 30 --T 100 --Kmax 12 --beta 0.5 --dt 0.2 --learning-rule 'vf'
+
+#Training, energy-based, 1 hidden layer, C-VF
+python main.py --action 'train' --size_tab 10 512 784 --lr_tab 0.0005 0.001 --epochs 30 --T 100 --Kmax 12 --beta 0.5 --dt 0.2 --learning-rule 'vf' --cep

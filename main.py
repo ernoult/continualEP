@@ -76,12 +76,6 @@ parser.add_argument(
     metavar='WINIT',
     help='weight initialization (default: tied)')
 parser.add_argument(
-    '--training-method',
-    type=str,
-    default='eqprop',
-    metavar='TMETHOD',
-    help='training method (default: eqprop)')
-parser.add_argument(
     '--action',
     type=str,
     default='train',
@@ -131,6 +125,14 @@ parser.add_argument(
     default=False, 
     help='continual ep/vf (default: False)')
 #***********************************************#
+
+#******************DEBUG C-EP******************#
+parser.add_argument(
+    '--debug',
+    action='store_true',
+    default=False, 
+    help='debug cep (default: False)')
+#**********************************************#
 
 args = parser.parse_args()
 
@@ -244,13 +246,13 @@ if __name__ == '__main__':
 
     elif (not args.toymodel) & (args.discrete) & (args.learning_rule == 'ep'):
 
-        net = EPdisc(args.device_label, args.size_tab, args.lr_tab, 
-			        args.T, args.Kmax, args.beta, cep = args.cep)
+        #net = EPdisc(args.device_label, args.size_tab, args.lr_tab, 
+			        #args.T, args.Kmax, args.beta, cep = args.cep)
+
+        net = EPdisc(args)
 
         if args.benchmark:
-            net_bptt = EPdisc(args.device_label, args.size_tab, args.lr_tab, 
-			            args.T, args.Kmax, args.beta)
-
+            net_bptt = EPdisc(args)
             net_bptt.load_state_dict(net.state_dict())         
 
 
@@ -285,20 +287,16 @@ if __name__ == '__main__':
         target = example_targets 
         
             
-        nS, dS, DT, _ = compute_nSdSDT(net, x, target)
+        nS, dS, dT, _ = compute_nSdSdT(net, x, target)
         plot_S(nS, dS)
         plt.show()
-        NT = compute_NT(net, x, target)
-	    
-        if not net.cep:
-            nT, dT = compute_nTdT(NT, DT)
-        else:
-            nT, _ = compute_nTdT(NT, DT)
-            dT = DT
-
+        nT = compute_nT(net, x, target)
+	 
         plot_T(nT, dT, args)
         plt.show()
         
+
+        '''        		
         #create path              
         BASE_PATH, name = createPath(args)
 
@@ -310,7 +308,7 @@ if __name__ == '__main__':
         outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
         pickle.dump(results_dict, outfile)
         outfile.close()     
-                                              
+        '''                                                     
                                     
     elif args.action == 'train':
 
@@ -344,7 +342,7 @@ if __name__ == '__main__':
         error_test_tab = []  
 
         for epoch in range(1, args.epochs + 1):
-            error_train = train(net, train_loader, epoch, args.training_method)
+            error_train = train(net, train_loader, epoch, args.learning_rule)
             error_test = evaluate(net, test_loader)
             error_train_tab.append(error_train)
             error_test_tab.append(error_test) ;

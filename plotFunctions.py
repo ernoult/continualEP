@@ -225,62 +225,7 @@ def plot_S(nS, dS):
         plt.xlabel('t', fontsize = 10)
         plt.subplots_adjust(hspace = 0.5)
         fig.tight_layout()
-                     
-        
-def compute_nTdT(NT, DT):
-
-    if not isinstance(NT[0], list):
-        nT = []
-        dT = []
-
-        for i in range(len(NT)):
-            if NT[i] is not None:
-                nT.append(torch.zeros_like(NT[i]))
-                dT.append(torch.zeros_like(DT[i]))
-            else:
-                nT.append(None)
-                dT.append(None)            
-
-        for i in range(len(NT)):
-            if NT[i] is not None:
-                for t in range(NT[i].size(0) - 1):
-                    nT[i][t + 1, :, :] = NT[i][t + 1, :, :] - NT[i][t, :, :]
-                    dT[i][t + 1, :, :] = DT[i][t + 1, :, :] - DT[i][t, :, :]
-        
-        return nT, dT
-
-
-    else:
-
-        nT_conv = []
-        nT_fc = []    
-        dT_conv = []
-        dT_fc = []
-
-        NT_conv = NT[0]
-        NT_fc = NT[1]
-        DT_conv = DT[0]
-        DT_fc = DT[1]    
-        
-        for i in range(len(NT_fc)):
-                nT_fc.append(torch.zeros_like(NT_fc[i]))
-                dT_fc.append(torch.zeros_like(DT_fc[i]))
-                
-        for i in range(len(NT_conv)):
-                nT_conv.append(torch.zeros_like(NT_conv[i]))
-                dT_conv.append(torch.zeros_like(DT_conv[i]))   
-
-        for i in range(len(NT_fc)):
-                for t in range(NT_fc[i].size(0) - 1):
-                    nT_fc[i][t + 1, :, :] = NT_fc[i][t + 1, :, :] - NT_fc[i][t, :, :]
-                    dT_fc[i][t + 1, :, :] = DT_fc[i][t + 1, :, :] - DT_fc[i][t, :, :]
-                    
-        for i in range(len(NT_conv)):
-                for t in range(NT_conv[i].size(0) - 1):
-                    nT_conv[i][t + 1, :, :] = NT_conv[i][t + 1, :, :] - NT_conv[i][t, :, :]
-                    dT_conv[i][t + 1, :, :] = DT_conv[i][t + 1, :, :] - DT_conv[i][t, :, :]
-        
-        return [nT_conv, nT_fc], [dT_conv, dT_fc]        
+                                
         
 def compute_Hist(nS, dS, NT, DT):
     hist_S_mean = []
@@ -434,7 +379,6 @@ if __name__ == '__main__':
         nT = results_dict['nT']
         dT = results_dict['dT']
         args = results_dict['args'] 
-        #nT, dT = compute_nTdT(NT, DT)    
         hist_S, hist_T = compute_Hist(nS, dS, nT, dT)
         plot_Hist(hist_S, hist_T, nT, args)   
         plt.show()
