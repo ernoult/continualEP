@@ -71,11 +71,14 @@ def train(net, train_loader, epoch, learning_rule):
                         for ind, w_temp in enumerate(net.w):
                             if w_temp is not None:
                                 w_temp.weight -= net.lr_tab_debug[int(np.floor(ind/2))]*Dw[0][ind]
-                                w_temp.bias -= net.lr_tab_debug[int(np.floor(ind/2))]*Dw[1][ind]    
+                                w_temp.bias -= net.lr_tab_debug[int(np.floor(ind/2))]*Dw[1][ind]  
+                        '''			  
                         for dw_temp in Dw:
                             for ind, dw_temp_layer in enumerate(dw_temp):
                                 if dw_temp_layer is not None:
                                     dw_temp_layer /= net.lr_tab_debug[int(np.floor(ind/2))]
+                        '''
+                        
                     net.updateWeights(Dw)                            
                 #***********************************************************************************#
 

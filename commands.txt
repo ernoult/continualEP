@@ -57,3 +57,7 @@ python main.py --action 'train' --size_tab 10 512 784 --lr_tab 0.05 0.1 --epochs
 
 #Training, energy-based, 1 hidden layer, C-VF
 python main.py --action 'train' --size_tab 10 512 784 --lr_tab 0.0005 0.001 --epochs 30 --T 100 --Kmax 12 --beta 0.5 --dt 0.2 --learning-rule 'vf' --cep
+
+#"Debug" C-EP
+python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.04 0.08 --epochs 30 --T 40 --Kmax 15 --beta 0.1 --cep --debug
+

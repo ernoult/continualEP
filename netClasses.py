@@ -1217,7 +1217,7 @@ class EPdisc(nn.Module):
         if args.debug:
             lr_tab_debug = []
             for lr in self.lr_tab:
-                lr_tab_debug.append(10**(-9)*lr)
+                lr_tab_debug.append(10**(-5)*lr)
             self.lr_tab_debug = lr_tab_debug
         #**************************************#
         
@@ -1428,7 +1428,7 @@ class EPdisc(nn.Module):
   
     #**************************NEW**************************# 
     def updateWeights(self, gradw, debug = False):
-        if not self.debug:
+        if not debug:
             lr_tab = self.lr_tab
         else:
             lr_tab = self.lr_tab_debug
