@@ -12,36 +12,34 @@ from main import rho, rhop, rhop2
 #*****************************VF, energy based *********************************#
 
 class VFcont(nn.Module):
-    def __init__(self, device_label, size_tab, lr_tab, T, Kmax, beta, dt = 1, 
-                    weight_initialization = 'tied', no_clamp = False, cep = False):
-        super(VFcont, self).__init__()
-        self.T = T
-        self.Kmax = Kmax        
-        self.dt = dt
-
-        self.size_tab = size_tab
-        self.lr_tab = lr_tab
-        self.ns = len(size_tab) - 1
+    def __init__(self, args):
+        super(VFcont, self).__init__()        
+        self.T = args.T
+        self.Kmax = args.Kmax        
+        self.dt = args.dt
+        self.size_tab = args.size_tab
+        self.lr_tab = args.lr_tab
+        self.ns = len(args.size_tab) - 1
         self.nsyn = 2*(self.ns - 1) + 1
-        self.cep = cep
-        if device_label >= 0:    
-            device = torch.device("cuda:"+str(device_label)+")")
+        self.cep = args.cep
+        if args.device_label >= 0:    
+            device = torch.device("cuda:"+str(args.device_label)+")")
             self.cuda = True
         else:
             device = torch.device("cpu")
             self.cuda = False   
         self.device = device
-        self.no_clamp = no_clamp
-        self.beta = beta
+        self.no_clamp = args.no_clamp
+        self.beta = args.beta
 
         w = nn.ModuleList([])                            
         for i in range(self.ns - 1):
-            w.append(nn.Linear(size_tab[i + 1], size_tab[i], bias = True))
-            w.append(nn.Linear(size_tab[i], size_tab[i + 1], bias = False))
+            w.append(nn.Linear(args.size_tab[i + 1], args.size_tab[i], bias = True))
+            w.append(nn.Linear(args.size_tab[i], args.size_tab[i + 1], bias = False))
             
-        w.append(nn.Linear(size_tab[-1], size_tab[-2]))
+        w.append(nn.Linear(args.size_tab[-1], args.size_tab[-2]))
                
-        if weight_initialization == 'tied':
+        if args.weight_initialization == 'tied':
             for i in range(self.ns - 1):
                 w[2*i + 1].weight.data = torch.transpose(w[2*i].weight.data.clone(), 0, 1)
                 	
@@ -251,41 +249,44 @@ class VFcont(nn.Module):
 #*****************************VF, prototypical *********************************#
 
 class VFdisc(nn.Module):
-    def __init__(self, device_label, size_tab, lr_tab, T, Kmax, beta, dt = 1, 
-                    weight_initialization = 'tied', cep = 'False'):
+    
+    def __init__(self, args):
         super(VFdisc, self).__init__()   
-        self.T = T
-        self.Kmax = Kmax     
-        self.dt = dt
-        self.size_tab = size_tab
-        self.lr_tab = lr_tab
-        self.ns = len(size_tab) - 1
+        self.T = args.T
+        self.Kmax = args.Kmax     
+        self.dt = 1
+        self.size_tab = args.size_tab
+        self.lr_tab = args.lr_tab
+        self.ns = len(args.size_tab) - 1
         self.nsyn = 2*(self.ns - 1) + 1
-        self.cep = cep
-        if device_label >= 0:    
-            device = torch.device("cuda:"+str(device_label)+")")
+        self.cep = args.cep
+        if args.device_label >= 0:    
+            device = torch.device("cuda:"+str(args.device_label)+")")
             self.cuda = True
         else:
             device = torch.device("cpu")
             self.cuda = False   
         self.device = device
-        self.beta = beta
+        self.beta = args.beta
+    
 
         w = nn.ModuleList([])                         
         for i in range(self.ns - 1):
-            w.append(nn.Linear(size_tab[i + 1], size_tab[i], bias = True))
-            w.append(nn.Linear(size_tab[i], size_tab[i + 1], bias = False))
+            w.append(nn.Linear(args.size_tab[i + 1], args.size_tab[i], bias = True))
+            w.append(nn.Linear(args.size_tab[i], args.size_tab[i + 1], bias = False))
             
-        w.append(nn.Linear(size_tab[-1], size_tab[-2]))
+        w.append(nn.Linear(args.size_tab[-1], args.size_tab[-2]))
                
-        if weight_initialization == 'tied':
+        if args.weight_initialization == 'tied':
             for i in range(self.ns - 1):
                 w[2*i + 1].weight.data = torch.transpose(w[2*i].weight.data.clone(), 0, 1)
-                                 
         self.w = w
         self = self.to(device)
+    
+              
 
     def stepper(self, data, s, target = None, beta = 0, return_derivatives = False):
+        print('stepper !')
         dsdt = []
         dsdt.append(-s[0] + rho(self.w[0](s[1])))
         if beta > 0:
@@ -485,38 +486,37 @@ class VFdisc(nn.Module):
 #*****************************toy model, VF, energy-based *********************************#
 
 class toyVFcont(nn.Module):
-    def __init__(self, device_label, size_tab, lr_tab,T, Kmax, beta, dt = 1, 
-                    weight_initialization = 'tied', no_clamp = False, cep = False):
+    def __init__(self, args):
         super(toyVFcont, self).__init__()
-        self.T = T
-        self.Kmax = Kmax        
-        self.dt = dt
+        self.T = args.T
+        self.Kmax = args.Kmax        
+        self.dt = args.dt
 
-        self.size_tab = size_tab
-        self.lr_tab = lr_tab
-        self.ns = len(size_tab) - 1
+        self.size_tab = args.size_tab
+        self.lr_tab = args.lr_tab
+        self.ns = len(args.size_tab) - 1
         self.nsyn = 2*(self.ns - 1) + 1
-        self.cep = cep
+        self.cep = args.cep
 
-        if device_label >= 0:    
-            device = torch.device("cuda:"+str(device_label)+")")
+        if args.device_label >= 0:    
+            device = torch.device("cuda:"+str(args.device_label)+")")
             self.cuda = True
         else:
             device = torch.device("cpu")
             self.cuda = False   
         self.device = device
-        self.no_clamp = no_clamp
-        self.beta = beta
+        self.no_clamp = args.no_clamp
+        self.beta = args.beta
 
         w = nn.ModuleList([])
 
         #fully connected architecture
-        w.append(nn.Linear(size_tab[0], size_tab[0], bias = False))
-        w.append(nn.Linear(size_tab[1], size_tab[0], bias = False))
-        w.append(nn.Linear(size_tab[2], size_tab[0], bias = False))
-        w.append(nn.Linear(size_tab[1], size_tab[1], bias = False))          
-        w.append(nn.Linear(size_tab[2], size_tab[1], bias = False))
-        w.append(nn.Linear(size_tab[0], size_tab[1], bias = False))
+        w.append(nn.Linear(args.size_tab[0], args.size_tab[0], bias = False))
+        w.append(nn.Linear(args.size_tab[1], args.size_tab[0], bias = False))
+        w.append(nn.Linear(args.size_tab[2], args.size_tab[0], bias = False))
+        w.append(nn.Linear(args.size_tab[1], args.size_tab[1], bias = False))          
+        w.append(nn.Linear(args.size_tab[2], args.size_tab[1], bias = False))
+        w.append(nn.Linear(args.size_tab[0], args.size_tab[1], bias = False))
 
         #no self connection
         '''
@@ -533,7 +533,7 @@ class toyVFcont(nn.Module):
         w[5].weight.data = 10**(-3)*w[5].weight.data.clone()                 
         
         
-        if weight_initialization == 'tied':
+        if args.weight_initialization == 'tied':
             w[0].weight.data = 0.5*(w[0].weight.data.clone() + torch.transpose(w[0].weight.data.clone(), 0, 1))
             w[3].weight.data = 0.5*(w[3].weight.data.clone() + torch.transpose(w[3].weight.data.clone(), 0, 1))                     
             w[1].weight.data = torch.transpose(w[5].weight.data.clone(), 0, 1)              
@@ -740,35 +740,34 @@ class toyVFcont(nn.Module):
 #*****************************toy model, VF, prototypical *********************************#
 
 class toyVFdisc(nn.Module):
-    def __init__(self, device_label, size_tab, lr_tab, T, Kmax, beta, dt = 1, 
-                    weight_initialization = 'tied', cep = False):
+    def __init__(self, args):
         super(toyVFdisc, self).__init__()
-        self.T = T
-        self.Kmax = Kmax
-        self.dt = dt
-        self.size_tab = size_tab
-        self.lr_tab = lr_tab
-        self.ns = len(size_tab) - 1
+        self.T = args.T
+        self.Kmax = args.Kmax
+        self.dt = 1
+        self.size_tab = args.size_tab
+        self.lr_tab = args.lr_tab
+        self.ns = len(args.size_tab) - 1
         self.nsyn = 2*(self.ns - 1) + 1
-        self.cep = cep
-        if device_label >= 0:    
-            device = torch.device("cuda:"+str(device_label)+")")
+        self.cep = args.cep
+        if args.device_label >= 0:    
+            device = torch.device("cuda:"+str(args.device_label)+")")
             self.cuda = True
         else:
             device = torch.device("cpu")
             self.cuda = False   
         self.device = device
-        self.beta = beta
+        self.beta = args.beta
 
         w = nn.ModuleList([])
  
         #fully connected architecture
-        w.append(nn.Linear(size_tab[0], size_tab[0], bias = False))
-        w.append(nn.Linear(size_tab[1], size_tab[0], bias = False))
-        w.append(nn.Linear(size_tab[2], size_tab[0], bias = False))
-        w.append(nn.Linear(size_tab[1], size_tab[1], bias = False))          
-        w.append(nn.Linear(size_tab[2], size_tab[1], bias = False))
-        w.append(nn.Linear(size_tab[0], size_tab[1], bias = False))
+        w.append(nn.Linear(args.size_tab[0], args.size_tab[0], bias = False))
+        w.append(nn.Linear(args.size_tab[1], args.size_tab[0], bias = False))
+        w.append(nn.Linear(args.size_tab[2], args.size_tab[0], bias = False))
+        w.append(nn.Linear(args.size_tab[1], args.size_tab[1], bias = False))          
+        w.append(nn.Linear(args.size_tab[2], args.size_tab[1], bias = False))
+        w.append(nn.Linear(args.size_tab[0], args.size_tab[1], bias = False))
 
         #no self connection
         '''
@@ -785,7 +784,7 @@ class toyVFdisc(nn.Module):
         w[5].weight.data = 10**(-3)*w[5].weight.data.clone()                 
         
         
-        if weight_initialization == 'tied':
+        if args.weight_initialization == 'tied':
             w[0].weight.data = 0.5*(w[0].weight.data.clone() + torch.transpose(w[0].weight.data.clone(), 0, 1))
             w[3].weight.data = 0.5*(w[3].weight.data.clone() + torch.transpose(w[3].weight.data.clone(), 0, 1))                     
             w[1].weight.data = torch.transpose(w[5].weight.data.clone(), 0, 1)              
@@ -985,35 +984,34 @@ class toyVFdisc(nn.Module):
 #*****************************EP, energy based *********************************#
 
 class EPcont(nn.Module):
-    def __init__(self, device_label, size_tab, lr_tab, T, Kmax, beta, dt = 1, 
-                    no_clamp = False, cep = False):
+    def __init__(self, args):
         super(EPcont, self).__init__()
         
-        self.T = T
-        self.Kmax = Kmax
-        self.dt = dt
-        self.size_tab = size_tab
-        self.lr_tab = lr_tab
-        self.ns = len(size_tab) - 1
+        self.T = args.T
+        self.Kmax = args.Kmax
+        self.dt = args.dt
+        self.size_tab = args.size_tab
+        self.lr_tab = args.lr_tab
+        self.ns = len(args.size_tab) - 1
         self.nsyn = 2*(self.ns - 1) + 1
-        self.cep = cep
-        if device_label >= 0:    
-            device = torch.device("cuda:"+str(device_label)+")")
+        self.cep = args.cep
+        if args.device_label >= 0:    
+            device = torch.device("cuda:"+str(args.device_label)+")")
             self.cuda = True
         else:
             device = torch.device("cpu")
             self.cuda = False    
         self.device = device
-        self.no_clamp = no_clamp
-        self.beta = beta
+        self.no_clamp = args.no_clamp
+        self.beta = args.beta
                     
         w = nn.ModuleList([])           
         for i in range(self.ns - 1):
 
-            w.append(nn.Linear(size_tab[i + 1], size_tab[i], bias = True))
+            w.append(nn.Linear(args.size_tab[i + 1], args.size_tab[i], bias = True))
             w.append(None)
 
-        w.append(nn.Linear(size_tab[-1], size_tab[-2]))                                         
+        w.append(nn.Linear(args.size_tab[-1], args.size_tab[-2]))                                         
         self.w = w
         self = self.to(device)
 

@@ -201,53 +201,33 @@ if __name__ == '__main__':
     #Build the net 
     if (not args.toymodel) & (not args.discrete) & (args.learning_rule == 'vf') :
 
-        net = VFcont(args.device_label, args.size_tab, args.lr_tab, 
-                    args.T, args.Kmax, args.beta, 
-                    dt = args.dt, no_clamp = args.no_clamp, 
-                    weight_initialization = args.weight_initialization,
-                    cep = args.cep)
+        net = VFcont(args)
 
         if args.benchmark:
-            net_bptt = VFcont(args.device_label, args.size_tab, args.lr_tab, 
-                        args.T, args.Kmax, args.beta, 
-                        dt = args.dt, no_clamp = args.no_clamp, 
-                        weight_initialization = args.weight_initialization)
+            net_bptt = VFcont(args)
 
             net_bptt.load_state_dict(net.state_dict())
 
     if (not args.toymodel) & (not args.discrete) & (args.learning_rule == 'ep') :
 
-        net = EPcont(args.device_label, args.size_tab, args.lr_tab, 
-                    args.T, args.Kmax, args.beta, 
-                    dt = args.dt, no_clamp = args.no_clamp,
-                    cep = args.cep)
+        net = EPcont(args)
 
         if args.benchmark:
-            net_bptt = EPcont(args.device_label, args.size_tab, args.lr_tab, 
-                        args.T, args.Kmax, args.beta, 
-                        dt = args.dt, no_clamp = args.no_clamp)
+            net_bptt = EPcont(args)
 
             net_bptt.load_state_dict(net.state_dict())
 
 
     elif (not args.toymodel) & (args.discrete) & (args.learning_rule == 'vf'):
 
-        net = VFdisc(args.device_label, args.size_tab, args.lr_tab, 
-                    args.T, args.Kmax, args.beta, 
-                    weight_initialization = args.weight_initialization,
-                    cep = args.cep)
+        net = VFdisc(args)        
 
         if args.benchmark:
-            net_bptt = VFdisc(args.device_label, args.size_tab, args.lr_tab, 
-                        args.T, args.Kmax, args.beta, 
-                        weight_initialization = args.weight_initialization)
+            net_bptt = VFdisc(args)
 
             net_bptt.load_state_dict(net.state_dict())
 
     elif (not args.toymodel) & (args.discrete) & (args.learning_rule == 'ep'):
-
-        #net = EPdisc(args.device_label, args.size_tab, args.lr_tab, 
-			        #args.T, args.Kmax, args.beta, cep = args.cep)
 
         net = EPdisc(args)
 
@@ -257,18 +237,11 @@ if __name__ == '__main__':
 
 
     elif (args.toymodel) & (not args.discrete):
-        net = toyVFcont(args.device_label, args.size_tab, args.lr_tab, 
-                        args.T, args.Kmax, args.beta, 
-                        dt = args.dt, no_clamp = args.no_clamp,
-                        weight_initialization = args.weight_initialization,
-                        cep = args.cep)
+        net = toyVFcont(args)
 
     elif (args.toymodel) & (args.discrete):
 
-        net = toyVFdisc(args.device_label, args.size_tab, args.lr_tab, 
-                        args.T, args.Kmax, args.beta, 
-                        weight_initialization = args.weight_initialization,
-                        cep = args.cep)   
+        net = toyVFdisc(args)   
                                   
 
     if args.action == 'plotcurves':
