@@ -134,7 +134,22 @@ parser.add_argument(
     help='debug cep (default: False)')
 #**********************************************#
 
+#***************FIX SEED***************#
+parser.add_argument(
+    '--seed',
+    nargs = '+',
+    type=int,
+    default=[],
+    metavar='SEED',
+    help='seed (default: None')
+#**************************************#
+
 args = parser.parse_args()
+
+#*************FIX SEED*************#
+if not not args.seed:
+    torch.manual_seed(args.seed[0])	
+#**********************************#
 
 batch_size = args.batch_size
 batch_size_test = args.test_batch_size

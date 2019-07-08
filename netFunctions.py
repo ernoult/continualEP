@@ -320,7 +320,11 @@ def createPath(args):
         else:
             tab = []
             for names in files:
-                tab.append(int(names[-1]))
+                if not names[-2] == '-':
+                    tab.append(int(names[-2] + names[-1]))
+                else:    
+                    tab.append(int(names[-1]))
+            print(tab)    			
             BASE_PATH = BASE_PATH + '/' + 'Trial-' + str(max(tab)+1)                                
         
         os.mkdir(BASE_PATH) 

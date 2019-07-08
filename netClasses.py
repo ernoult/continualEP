@@ -286,7 +286,6 @@ class VFdisc(nn.Module):
               
 
     def stepper(self, data, s, target = None, beta = 0, return_derivatives = False):
-        print('stepper !')
         dsdt = []
         dsdt.append(-s[0] + rho(self.w[0](s[1])))
         if beta > 0:
