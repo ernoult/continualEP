@@ -6,7 +6,9 @@ import torchvision
 import torch.optim as optim
 import torch.nn.functional as F
 
-from main import rho, rhop, rhop2
+#from main import rho, rhop, rhop2
+
+from main import rho, rhop
 
 
 #*****************************VF, energy based *********************************#
@@ -268,7 +270,10 @@ class VFdisc(nn.Module):
             self.cuda = False   
         self.device = device
         self.beta = args.beta
-    
+    	
+        #***USE FORMER VERSION OF VF-LEARNING RULE***#
+        self.former = args.former
+        #********************************************#
 
         w = nn.ModuleList([])                         
         for i in range(self.ns - 1):
@@ -457,15 +462,29 @@ class VFdisc(nn.Module):
         gradw_bias = []
         beta = self.beta
         batch_size = s[0].size(0)
-                   
+
+        '''                   
         for i in range(self.ns - 1):                
             gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(torch.mul(rhop2(seq[i]), s[i] - seq[i]), 0, 1), seq[i + 1]))
-            gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(torch.mul(rhop2(seq[i + 1]), s[i + 1] - seq[i + 1]), 0, 1), seq[i]))       
-   
-            gradw_bias.append((1/(beta*batch_size))*torch.mul(rhop2(seq[i]), s[i] - seq[i]).sum(0))   
+            gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(torch.mul(rhop2(seq[i + 1]), s[i + 1] - seq[i + 1]), 0, 1), seq[i]))
+            gradw_bias.append((1/(beta*batch_size))*torch.mul(rhop2(seq[i]), s[i] - seq[i]).sum(0))
             gradw_bias.append(None)                                                                                  
                                                                 
         gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(torch.mul(rhop2(seq[-1]), s[-1] - seq[-1]), 0, 1), data))
+        gradw_bias.append(None)
+                                                                                                                                                                       
+        return  gradw, gradw_bias
+        '''
+
+        for i in range(self.ns - 1):                
+
+            gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(torch.mul(rhop(self.w[2*i](seq[i + 1])), s[i] - seq[i]), 0, 1), seq[i + 1]))
+            gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(torch.mul(rhop(self.w[2*i + 1](seq[i])), s[i + 1] - seq[i + 1]), 0, 1), seq[i])) 
+            gradw_bias.append((1/(beta*batch_size))*torch.mul(rhop(self.w[2*i](seq[i + 1])), s[i] - seq[i]).sum(0))
+             
+            gradw_bias.append(None)                                                                                  
+                                                                
+        gradw.append((1/(beta*batch_size))*torch.mm(torch.transpose(torch.mul(rhop(self.w[-1](data)), s[-1] - seq[-1]), 0, 1), data))
         gradw_bias.append(None)
                                                                                                                                                                        
         return  gradw, gradw_bias

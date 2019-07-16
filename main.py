@@ -144,12 +144,22 @@ parser.add_argument(
     help='seed (default: None')
 #**************************************#
 
+#**************************FORMER-VF-LR**************************#
+parser.add_argument(
+    '--former',
+    action='store_true',
+    default=False, 
+    help='uses former version of VF learning rule (default: False)')
+#****************************************************************#
+
+
+
 args = parser.parse_args()
 
-#*************FIX SEED*************#
+
 if not not args.seed:
     torch.manual_seed(args.seed[0])	
-#**********************************#
+
 
 batch_size = args.batch_size
 batch_size_test = args.test_batch_size
@@ -199,6 +209,9 @@ if  args.activation_function == 'sigm':
 elif args.activation_function == 'hardsigm':
     def rho(x):
         return x.clamp(min = 0).clamp(max = 1)
+
+    def rhop(x):
+        return ((x >= 0) & (x <= 1)).float()
 
 elif args.activation_function == 'tanh':
     def rho(x):

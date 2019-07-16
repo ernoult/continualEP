@@ -90,9 +90,16 @@ def train(net, train_loader, epoch, learning_rule):
                 pred = s[0].data.max(1, keepdim=True)[1]
                 loss = (1/(2*s[0].size(0)))*criterion(s[0], targets)
                 ###################################* VF-EQPROP *#########################################
+                seq = [i.clone() for i in s]
+                    #for i in range(len(s)):
+                        #seq.append(s[i].clone())
                 s, Dw = net.forward(data, s, target = targets, beta = net.beta, method = 'nograd')
-                if not net.cep:   
-                    net.updateWeights(Dw)
+                if not net.cep:
+                    if not net.former:                   			
+                        net.updateWeights(Dw)
+                    else:
+                        Dw_former = net.computeGradients(data, s, seq)
+                        net.updateWeights(Dw_former)
                 #########################################################################################                
 	
 
