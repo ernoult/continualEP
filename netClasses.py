@@ -44,6 +44,19 @@ class VFcont(nn.Module):
         if args.weight_initialization == 'tied':
             for i in range(self.ns - 1):
                 w[2*i + 1].weight.data = torch.transpose(w[2*i].weight.data.clone(), 0, 1)
+
+        #***********SPARSITY***********#
+        if args.sparsity > 0:
+            for param in w:
+                mask = torch.bernoulli((1 - args.sparsity)*torch.ones_like(param.weight.data))
+                param.weight.data = mask*param.weight.data        
+        #******************************#
+
+        #***********COMPRESSION***********#
+        if not args.compression == 1:
+            for param in w:
+                param.weight.data = args.compression*param.weight.data        
+        #******************************#
                 	
         self.w = w
         self = self.to(device)        

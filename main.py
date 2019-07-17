@@ -153,6 +153,23 @@ parser.add_argument(
 #****************************************************************#
 
 
+#*************************SPARSITY*************************#
+parser.add_argument(
+    '--sparsity',
+    type=float,
+    default=0,
+    help='weight sparsity (defaut: 0)')
+#**********************************************************#
+
+
+#*************************COMPRESSION*************************#
+parser.add_argument(
+    '--compression',
+    type=float,
+    default=1,
+    help='compression (defaut: 1)')
+#**********************************************************#
+
 
 args = parser.parse_args()
 
