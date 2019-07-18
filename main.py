@@ -126,9 +126,9 @@ parser.add_argument(
     help='continual ep/vf (default: False)')
 #***********************************************#
 
-#******************DEBUG C-EP******************#
+#******************debug C-EP******************#
 parser.add_argument(
-    '--debug',
+    '--debug-cep',
     action='store_true',
     default=False, 
     help='debug cep (default: False)')
@@ -169,6 +169,13 @@ parser.add_argument(
     default=1,
     help='compression (defaut: 1)')
 #**********************************************************#
+#******************debug C-EP******************#
+parser.add_argument(
+    '--debug',
+    action='store_true',
+    default=False, 
+    help='debug (default: False)')
+#**********************************************#
 
 
 args = parser.parse_args()
@@ -314,7 +321,7 @@ if __name__ == '__main__':
         plt.show()
         
 
-        '''        		
+                		
         #create path              
         BASE_PATH, name = createPath(args)
 
@@ -326,7 +333,7 @@ if __name__ == '__main__':
         outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
         pickle.dump(results_dict, outfile)
         outfile.close()     
-        '''                                                     
+                                                            
                                     
     elif args.action == 'train':
 
@@ -359,12 +366,47 @@ if __name__ == '__main__':
         error_train_tab = []
         error_test_tab = []  
 
+        if args.debug:
+            dicts_syn = { 'sign':[], 'zero':[], 'mean_w': [], 'std_w': [],
+                        'mean_bias': [], 'std_bias': [],
+                        'align_1': [], 'align_2': []}
+
+            dicts_neu = {'satmin':[], 'satmax': []}
+
+            hyperdict_syn = []
+            for _ in range(len(net.w)):
+                hyperdict_syn.append(copy.deepcopy(dicts_syn))
+
+            hyperdict_neu = []
+            for _ in range(net.ns):
+                hyperdict_neu.append(copy.deepcopy(dicts_neu))
+
+
+
         for epoch in range(1, args.epochs + 1):
-            error_train = train(net, train_loader, epoch, args.learning_rule)
-            error_test = evaluate(net, test_loader)
-            error_train_tab.append(error_train)
+            if not args.debug:
+                error_train = train(net, train_loader, epoch, args.learning_rule)
+            else:
+                error_train, hyperdict_mb = train(net, train_loader, epoch, args.learning_rule)
+                error_train_tab.append(error_train)
+
+                for ind, dicts_temp in enumerate(hyperdict_mb[0]):
+                    for indkey, (key, value) in enumerate(dicts_temp.items()):
+                        hyperdict_neu[ind][key] = np.concatenate((hyperdict_neu[ind][key], value))  
+
+                for ind, dicts_temp in enumerate(hyperdict_mb[1]):
+                    for indkey, (key, value) in enumerate(dicts_temp.items()):
+                        hyperdict_syn[ind][key] = np.concatenate((hyperdict_syn[ind][key], value))      
+                                     
+                results_debug = {'hyperdict_neu': hyperdict_neu, 'hyperdict_syn': hyperdict_syn}
+
+            error_test = evaluate(net, test_loader)            
             error_test_tab.append(error_test) ;
-            results_dict = {'error_train_tab' : error_train_tab, 'error_test_tab' : error_test_tab}  
+            results_dict = {'error_train_tab' : error_train_tab, 'error_test_tab' : error_test_tab}
+
+            if args.debug:
+                results_dict.update(results_debug)
+
             if args.benchmark:
                 results_dict_bptt.update(results_dict)    
                 outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')

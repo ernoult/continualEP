@@ -9,6 +9,7 @@ import torch.optim as optim
 import os, sys
 import datetime
 from shutil import copyfile
+import copy
 
 def train(net, train_loader, epoch, learning_rule): 
 
@@ -23,7 +24,24 @@ def train(net, train_loader, epoch, learning_rule):
                 net.w[i].weight.requires_grad = True
                 if net.w[i].bias is not None:
                     net.w[i].bias.requires_grad = True                                
-           
+       
+    #****************************DEBUG*****************************#
+
+    if net.debug:
+        dicts_syn = {'sign': np.zeros(len(train_loader)), 'zero': np.zeros(len(train_loader)),
+                 'mean_w': np.zeros(len(train_loader)), 'std_w': np.zeros(len(train_loader)),
+                 'mean_bias': np.zeros(len(train_loader)), 'std_bias': np.zeros(len(train_loader)),
+                'align_1': np.zeros(len(train_loader)), 'align_2': np.zeros(len(train_loader))}
+        hyperdict_syn = []
+        for i in range(len(net.w)):
+            hyperdict_syn.append(copy.deepcopy(dicts_syn))
+
+        dicts_neu = {'satmin': np.zeros(len(train_loader)), 'satmax': np.zeros(len(train_loader))}
+        hyperdict_neu = []
+        for i in range(net.ns):
+            hyperdict_neu.append(copy.deepcopy(dicts_neu))
+    #**************************************************************# 
+    
     for batch_idx, (data, targets) in enumerate(train_loader):            
         s = net.initHidden(data.size(0))
         
@@ -59,8 +77,8 @@ def train(net, train_loader, epoch, learning_rule):
                 for i in range(len(s)):
                     seq.append(s[i].clone())
 
-                #***************************************DEBUG***************************************#
-                if not net.debug:
+                #***************************************debug_cep***************************************#
+                if not net.debug_cep:
                     s = net.forward(data, s, target = targets, beta = net.beta, method = 'nograd')
                     if not net.cep:   
                         Dw = net.computeGradients(data, s, seq)
@@ -72,12 +90,6 @@ def train(net, train_loader, epoch, learning_rule):
                             if w_temp is not None:
                                 w_temp.weight -= net.lr_tab_debug[int(np.floor(ind/2))]*Dw[0][ind]
                                 w_temp.bias -= net.lr_tab_debug[int(np.floor(ind/2))]*Dw[1][ind]  
-                        '''			  
-                        for dw_temp in Dw:
-                            for ind, dw_temp_layer in enumerate(dw_temp):
-                                if dw_temp_layer is not None:
-                                    dw_temp_layer /= net.lr_tab_debug[int(np.floor(ind/2))]
-                        '''
                         
                     net.updateWeights(Dw)                            
                 #***********************************************************************************#
@@ -112,7 +124,36 @@ def train(net, train_loader, epoch, learning_rule):
            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                epoch, (batch_idx + 1) * len(data), len(train_loader.dataset),
                100. * (batch_idx + 1) / len(train_loader), loss.data))
-        
+
+
+
+        #***********************DEBUG***********************#
+        if net.debug:
+            counter_sign_T, counter_zero_T, counter_sat, counter_w, counter_bias, counter_align = receipe_mb(net, data, targets, batch_idx)
+
+            for ind in range(len(counter_sign_T)):#fc layers
+                hyperdict_syn[ind]['sign'][batch_idx] = counter_sign_T[ind]
+                hyperdict_syn[ind]['zero'][batch_idx] = counter_zero_T[ind]
+
+                #*********************WEIGHT TRACKING*********************#
+                hyperdict_syn[ind]['mean_w'][batch_idx] = counter_w[0][ind]
+                hyperdict_syn[ind]['std_w'][batch_idx] = counter_w[1][ind]
+                hyperdict_syn[ind]['mean_bias'][batch_idx] = counter_bias[0][ind]
+                hyperdict_syn[ind]['std_bias'][batch_idx] = counter_bias[1][ind]
+                #*********************************************************#
+
+                #*******************ALIGNMENT TRACKING********************#
+                hyperdict_syn[ind]['align_1'][batch_idx] = counter_align[0][ind]
+                hyperdict_syn[ind]['align_2'][batch_idx] = counter_align[1][ind]
+                #*********************************************************#
+
+            for ind in range(net.ns):
+                hyperdict_neu[ind]['satmin'][batch_idx] = counter_sat[0][ind]
+                hyperdict_neu[ind]['satmax'][batch_idx] = counter_sat[1][ind]
+
+        #***************************************************#  
+
+       
         
     loss_tot /= len(train_loader.dataset)
     
@@ -121,10 +162,90 @@ def train(net, train_loader, epoch, learning_rule):
        loss_tot,100*(len(train_loader.dataset)- correct.item() )/ len(train_loader.dataset), len(train_loader.dataset)-correct.item(), len(train_loader.dataset),
        ))
 
-    
-    return 100*(len(train_loader.dataset)- correct.item())/ len(train_loader.dataset)
+    if not net.debug:
+        return 100*(len(train_loader.dataset)- correct.item())/ len(train_loader.dataset)
+
+    else:
+        return 100*(len(train_loader.dataset)- correct.item())/ len(train_loader.dataset), [hyperdict_neu, hyperdict_syn]
        
     
+
+def receipe_mb(net, data, targets, batch_idx):
+    
+    counter_sign_T = np.zeros(len(net.w))
+    counter_zero_T = np.zeros(len(net.w))
+
+    counter_satmax = np.zeros(len(net.w))
+    counter_satmin = np.zeros(len(net.w))
+
+    #********************WEIGHT TRACKING********************#
+    counter_mean_w = np.zeros(len(net.w))
+    counter_std_w = np.zeros(len(net.w))
+    counter_mean_bias = np.zeros(len(net.w))
+    counter_std_bias = np.zeros(len(net.w))
+    #*******************************************************#
+
+    #*************COUNTER ALIGN*************#
+    counter_align_1 = np.zeros(len(net.w))
+    counter_align_2 = np.zeros(len(net.w))
+    #***************************************#
+
+    batch_size = data.size(0)                                  
+    s, inds = net.initHidden(batch_size)
+    if net.cuda:
+        data, targets = data.to(net.device), targets.to(net.device)
+        for i in range(len(s)):
+            s[i] = s[i].to(net.device)
+    
+    #Check dS, nS, DT computation
+    nS, dS, DT, seq = compute_nSdSdT(net, data, targets)
+
+    #Check NT computation		       
+    NT = compute_nT(net, data, targets, wholeProcess = False, diff = False)
+
+      
+    for i in range(len(NT)):
+        size_temp = DT[i][-1, :].view(-1,).size()[0]
+        counter_temp = ((torch.sign(NT[i][-1, :]) == torch.sign(DT[i][-1, :])) & (torch.abs(NT[i][-1, :]) > 0) & (torch.abs(DT[i][-1, :]) > 0)).sum().item()*100/size_temp
+
+        counter_temp_2 = ((NT[i][-1, :] == DT[i][-1, :]) & (NT[i][-1, :] == torch.zeros_like(NT[i][-1, :]))).sum().item()*100/size_temp		
+        counter_sign_T[i] = counter_temp
+        counter_zero_T[i] = counter_temp_2
+        counter_mean_w[i] = net.w[i].weight.data.mean()
+        counter_std_w[i] = net.w[i].weight.data.std()
+        if net.w[i].bias is not None:
+            counter_mean_bias[i] = net.w[i].bias.data.mean()
+            counter_std_bias[i] = net.w[i].bias.data.std()
+
+        if (batch_idx + 1)% 100 == 0:
+            print('fc layer {}: {:.1f}% (same sign, total), i.e. {:.1f}% (stricly non zero), {:.1f}% (both zero)'.format(i, counter_temp + counter_temp_2, counter_temp, counter_temp_2))
+        del counter_temp, counter_temp_2
+
+    #******************ALIGNMENT***********************#
+    for i in range(int(np.floor((len(NT) - 1)/2))):
+        size_temp = DT[2*i][-1, :].view(-1,).size()[0]
+        counter_align_1[2*i] = (torch.sign(net.w[2*i].weight.data) == torch.sign(torch.transpose(net.w[2*i + 1].weight.data, 0, 1))).sum().item()*100/size_temp
+	
+        counter_align_2[2*i] = np.arccos((net.w[2*i].weight.data*torch.transpose(net.w[2*i + 1].weight.data, 0 ,1)).sum().item()/np.sqrt((net.w[2*i].weight.data**2).sum().item()*(net.w[2*i + 1].weight.data**2).sum().item()))
+    #**************************************************#
+
+    for i in range(len(seq)):
+        size_temp = seq[i].view(-1,).size()[0]
+        counter_temp = (seq[i] == 0).sum().item()*100/size_temp
+        counter_temp_2 = (seq[i] == 1).sum().item()*100/size_temp
+        counter_satmin[i] = counter_temp
+        counter_satmax[i] = counter_temp_2 
+        if (batch_idx + 1)% 100 == 0:
+            print('saturation in layer {}: {:.1f}% (min), {:.1f}% (max)'.format(i, counter_temp, counter_temp_2))  
+        del counter_temp, counter_temp_2  
+   
+
+    
+    return counter_sign_T, counter_zero_T, [counter_satmin, counter_satmax], [counter_mean_w, counter_std_w], [counter_mean_bias, counter_std_bias], [counter_align_1, counter_align_2]
+
+
+
+
 def evaluate(net, test_loader): 
 
     net.eval()
@@ -175,7 +296,7 @@ def compute_nSdSdT(net, data, target):
     return nS, dS, dT, seq
 
 
-def compute_nT(net, data, target, wholeProcess = True):
+def compute_nT(net, data, target, wholeProcess = True, diff = True):
 
     batch_size_temp = data.size(0)
     
@@ -216,9 +337,10 @@ def compute_nT(net, data, target, wholeProcess = True):
                 if net.w[i] is not None:
                     NT[i][-1, :, :] = net.w[i].weight.grad.clone()
 
-    nT = compute_diffT(NT)
+    if diff:
+        NT = compute_diffT(NT)
                      
-    return nT
+    return NT
   
         
 def compute_diffT(NT):

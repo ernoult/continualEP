@@ -4,7 +4,7 @@ import os, sys
 import pickle
 import torch
 
-fontsize = 13
+fontsize = 12
 
 def plot_T(NT, DT, *arg): 
     if not isinstance(NT[0], list):
@@ -366,13 +366,156 @@ def plot_results(what, *arg):
         plt.ylabel('Error rate (%)')
         plt.grid()
 
+#********************PLOT DEBUG DICTIONNARY********************#
+
+def plot_debug(hyperdict):
+
+    hyperdict_neu, hyperdict_syn = hyperdict
+	
+    #NEURONS
+    fig1 = plt.figure(figsize = (4, 2*len(hyperdict_neu)))
+    plt.rcParams.update({'font.size': fontsize})
+    for ind, dicts in enumerate(hyperdict_neu):
+        plt.subplot(len(hyperdict), 1, 1 + ind)
+        plt.plot(dicts['satmin'], label = r'$s^*_{' + str(ind) + '}$ = 0')
+        plt.plot(dicts['satmax'], label = r'$s^*_{' + str(ind) + '}$ = 1')
+        plt.title(r'$s^*_{' + str(ind) + '}$')
+        plt.ylabel(r'$\%$')
+        plt.ylim((0, 100))
+        plt.legend(loc = 'best')
+        plt.grid()
+    plt.subplots_adjust(hspace = 0.5)   
+    fig1.tight_layout() 
+
+    #SYNAPSES (error processes)
+    fig2 = plt.figure(figsize = (5, 2*(len(hyperdict_syn) - 1) + 1))
+    plt.rcParams.update({'font.size': fontsize})
+    N_pairs = int((len(hyperdict_syn) - 1)/2)
+
+    for ind in range(N_pairs):
+        plt.subplot(len(hyperdict_syn), 1, 2*ind + 1)
+        wstr = 'W_{'+ str(ind) + str(ind + 1) +'}' 
+        plt.plot(hyperdict_syn[2*ind]['sign'], 
+                label = r'$sign(- \nabla_{' + wstr + r'}^{BPTT}) = sign(\Delta_{'+ wstr + '}^{EP})$')
+        plt.plot(hyperdict_syn[2*ind]['zero'], 
+                label = r'$\nabla_{' + wstr + r'}^{BPTT} = \Delta_{'+ wstr + r'}^{EP}=0$')
+        plt.title(r'$' + wstr + r'$')
+        plt.ylabel(r'$\%$')
+        plt.ylim((0, 100))
+        if ind == 0:
+            plt.legend(loc = 'best')
+        plt.grid()
+
+        plt.subplot(len(hyperdict_syn), 1, 2*ind + 2)
+        wstr = 'W_{'+ str(ind + 1) + str(ind) +'}' 
+        plt.plot(hyperdict_syn[2*ind + 1]['sign'], 
+                label = r'$sign(- \nabla_{' + wstr + r'}^{BPTT}) = sign(\Delta_{'+ wstr + '}^{EP})$')
+        plt.plot(hyperdict_syn[2*ind + 1]['zero'], 
+                label = r'$\nabla_{' + wstr + r'}^{BPTT} = \Delta_{'+ wstr + r'}^{EP}=0$')
+        plt.title(r'$' + wstr + r'$')
+        plt.ylabel(r'$\%$')
+        plt.ylim((0, 100))
+        plt.grid()
+
+    plt.subplot(len(hyperdict_syn), 1, len(hyperdict_syn))
+    wstr = 'W_{'+ str(N_pairs) +'x}' 
+    plt.plot(hyperdict_syn[-1]['sign'], 
+            label = r'$sign(- \nabla_{' + wstr + r'}^{BPTT}) = sign(\Delta_{'+ wstr + '}^{EP})$')
+    plt.plot(hyperdict_syn[-1]['zero'], 
+            label = r'$\nabla_{' + wstr + r'}^{BPTT} = \Delta_{'+ wstr + r'}^{EP}=0$')
+    plt.title(r'$' + wstr + r'$')
+    plt.ylabel(r'$\%$')
+    plt.ylim((0, 100))
+    plt.grid()
+
+
+    plt.subplots_adjust(hspace = 0.5)   
+    fig2.tight_layout() 
+
+    #*******************************SYNAPSES (weight statistics)*******************************#
+    fig3 = plt.figure(figsize = (5, 2*(len(hyperdict_syn) - 1) + 1))
+    plt.rcParams.update({'font.size': fontsize})
+
+    for ind in range(N_pairs):
+
+        plt.subplot(len(hyperdict_syn), 1, 2*ind + 1)
+        wstr = 'W_{'+ str(ind) + str(ind + 1) +'}' 
+        x = np.linspace(1, len(hyperdict_syn[2*ind]['mean_w']), len(hyperdict_syn[2*ind]['mean_w']))
+        plt.fill_between(x, hyperdict_syn[2*ind]['mean_w'] + hyperdict_syn[2*ind]['std_w'], hyperdict_syn[2*ind]['mean_w'] - hyperdict_syn[2*ind]['std_w'],
+                        alpha = 0.5, color = 'C0')
+        plt.plot(x, hyperdict_syn[2*ind]['mean_w'], color = 'C0', label = 'w')
+
+        plt.fill_between(x, hyperdict_syn[2*ind]['mean_bias'] + hyperdict_syn[2*ind]['std_bias'], hyperdict_syn[2*ind]['mean_bias'] - hyperdict_syn[2*ind]['std_bias'],
+                        alpha = 0.5, color = 'C3')
+        plt.plot(x, hyperdict_syn[2*ind]['mean_bias'], color = 'C3', label = 'bias')
+        plt.title(r'$' + wstr + r'$')
+        if ind == 0:
+            plt.legend(loc = 'best')
+        plt.grid()
+
+        plt.subplot(len(hyperdict_syn), 1, 2*ind + 2)
+        wstr = 'W_{'+ str(ind + 1) + str(ind) +'}' 
+        x = np.linspace(1, len(hyperdict_syn[2*ind + 1]['mean_w']), len(hyperdict_syn[2*ind + 1]['mean_w']))
+        plt.fill_between(x, hyperdict_syn[2*ind + 1]['mean_w'] + hyperdict_syn[2*ind + 1]['std_w'], hyperdict_syn[2*ind + 1]['mean_w'] - hyperdict_syn[2*ind + 1]['std_w'],
+                        alpha = 0.5, color = 'C0')
+        plt.plot(x, hyperdict_syn[2*ind]['mean_w'], color = 'C0', label = 'w')
+
+        plt.fill_between(x, hyperdict_syn[2*ind + 1]['mean_bias'] + hyperdict_syn[2*ind + 1]['std_bias'], hyperdict_syn[2*ind + 1]['mean_bias'] - hyperdict_syn[2*ind + 1]['std_bias'],
+                        alpha = 0.5, color = 'C3')
+        plt.plot(x, hyperdict_syn[2*ind + 1]['mean_bias'], color = 'C3', label = 'bias')
+        plt.title(r'$' + wstr + r'$')
+        plt.grid()
+
+    plt.subplot(len(hyperdict_syn), 1, len(hyperdict_syn))
+    wstr = 'W_{'+ str(N_pairs) + 'x}' 
+    x = np.linspace(1, len(hyperdict_syn[-1]['mean_w']), len(hyperdict_syn[-1]['mean_w']))
+    plt.fill_between(x, hyperdict_syn[-1]['mean_w'] + hyperdict_syn[-1]['std_w'], hyperdict_syn[-1]['mean_w'] - hyperdict_syn[-1]['std_w'],
+                    alpha = 0.5, color = 'C0')
+    plt.plot(x, hyperdict_syn[-1]['mean_w'], color = 'C0', label = 'w')
+
+    plt.fill_between(x, hyperdict_syn[-1]['mean_bias'] + hyperdict_syn[-1]['std_bias'], hyperdict_syn[-1]['mean_bias'] - hyperdict_syn[-1]['std_bias'],
+                    alpha = 0.5, color = 'C3')
+    plt.plot(x, hyperdict_syn[-1]['mean_bias'], color = 'C3', label = 'bias')
+    plt.title(r'$' + wstr + r'$')
+    plt.grid()
+
+    plt.subplots_adjust(hspace = 0.5)   
+    fig3.tight_layout()
+    #******************************************************************************************#
+
+    #ALIGNMENT
+    fig4 = plt.figure(figsize = (5, len(hyperdict_syn) - 1))
+    plt.rcParams.update({'font.size': fontsize})
+    N_pairs = int(np.floor((len(hyperdict_syn) - 1)/2))
+
+    for ind in range(N_pairs):
+        plt.subplot(N_pairs, 2, 2*ind + 1)
+        plt.plot(hyperdict_syn[2*ind]['align_1'])
+        plt.title(r'$W_{' + str(2*ind) + str(2*ind + 1) + r'}-W_{'+ str(2*ind + 1) + str(2*ind) + r'}$ (1)')
+        plt.ylabel(r'$\%$')
+        plt.ylim((0, 100))
+        plt.grid()
+
+        plt.subplot(N_pairs, 2, 2*ind + 2)
+        plt.plot((180/np.pi)*hyperdict_syn[2*ind]['align_2'])
+        plt.title(r'$W_{' + str(2*ind) + str(2*ind + 1) + r'}-W_{'+ str(2*ind + 1) + str(2*ind) + r'}$ (2)')
+        plt.ylabel(r'$\circ$')
+        #plt.ylim((0, 100))
+        plt.grid()
+
+
+
+    plt.subplots_adjust(hspace = 0.5)   
+    fig4.tight_layout() 
+
+
 
 if __name__ == '__main__':
     BASE_PATH = os.getcwd() + '/results' 
     infile = open(BASE_PATH,'rb')
     results_dict = pickle.load(infile)
     infile.close()
-
+	
     if 'nS' in results_dict:
         nS = results_dict['nS']
         dS = results_dict['dS']
@@ -386,6 +529,11 @@ if __name__ == '__main__':
                   
         plot_T(nT, dT, args)                                 
         plt.show()
+
+    if 'hyperdict_neu' in results_dict:
+        hyperdict = results_dict['hyperdict_neu'], results_dict['hyperdict_syn'] 		
+        plot_debug(hyperdict)
+        #plt.show() 
     
     if 'error_train_tab' in results_dict:
         plot_results('error', results_dict['error_train_tab'], results_dict['error_test_tab'])

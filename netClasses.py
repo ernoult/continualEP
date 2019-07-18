@@ -288,6 +288,12 @@ class VFdisc(nn.Module):
         self.former = args.former
         #********************************************#
 
+	
+        #********DEBUG********#
+        self.debug = args.debug
+        #*********************#
+
+
         w = nn.ModuleList([])                         
         for i in range(self.ns - 1):
             w.append(nn.Linear(args.size_tab[i + 1], args.size_tab[i], bias = True))
@@ -1241,14 +1247,18 @@ class EPdisc(nn.Module):
         self.device = device
         self.beta = args.beta
 
-        #**************DEBUG C-EP**************#
-        self.debug = args.debug
-        if args.debug:
+        #**************debug_cep C-EP**************#
+        self.debug_cep = args.debug_cep
+        if args.debug_cep:
             lr_tab_debug = []
             for lr in self.lr_tab:
                 lr_tab_debug.append(10**(-5)*lr)
             self.lr_tab_debug = lr_tab_debug
         #**************************************#
+
+        #*********DEBUG*********#
+        self.debug = args.debug	
+        #***********************#
         
 
         w = nn.ModuleList([])
@@ -1282,13 +1292,13 @@ class EPdisc(nn.Module):
         #*****************************C-EP*****************************#
         if (self.cep) & (beta > 0):
             dw = self.computeGradients(data, s, s_old)
-            if (self.cep) & (not self.debug):
+            if (self.cep) & (not self.debug_cep):
                 with torch.no_grad(): 
                     self.updateWeights(dw)
 
-            elif (self.cep) & (self.debug):
+            elif (self.cep) & (self.debug_cep):
                 with torch.no_grad(): 
-                    self.updateWeights(dw, debug = True)  
+                    self.updateWeights(dw, debug_cep = True)  
                          
         if return_derivatives:
             dw = self.computeGradients(data, s, s_old)
@@ -1321,12 +1331,12 @@ class EPdisc(nn.Module):
                     s = self.stepper(data, s)
                 return s
 
-            elif (beta > 0) & (not self.debug):
+            elif (beta > 0) & (not self.debug_cep):
                 for t in range(Kmax):                      
                     s = self.stepper(data, s, target, beta)
                 return s
              
-            elif (beta > 0) & (self.debug):
+            elif (beta > 0) & (self.debug_cep):
                 Dw = self.initGrad()                                          
                 for t in range(Kmax):
                     s, _, dw = self.stepper(data, s, target, beta, return_derivatives = True)
@@ -1456,8 +1466,8 @@ class EPdisc(nn.Module):
 
   
     #**************************NEW**************************# 
-    def updateWeights(self, gradw, debug = False):
-        if not debug:
+    def updateWeights(self, gradw, debug_cep = False):
+        if not debug_cep:
             lr_tab = self.lr_tab
         else:
             lr_tab = self.lr_tab_debug
