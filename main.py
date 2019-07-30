@@ -386,6 +386,7 @@ if __name__ == '__main__':
         for epoch in range(1, args.epochs + 1):
             if not args.debug:
                 error_train = train(net, train_loader, epoch, args.learning_rule)
+                error_train_tab.append(error_train)
             else:
                 error_train, hyperdict_mb = train(net, train_loader, epoch, args.learning_rule)
                 error_train_tab.append(error_train)

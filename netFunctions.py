@@ -507,9 +507,12 @@ def createPath(args):
 def createHyperparameterfile(BASE_PATH, name, args):    
 
     if args.action == 'train':
+        learning_rule = args.learning_rule
+        if args.cep:
+            learning_rule = 'c-' + learning_rule
         hyperparameters = open(BASE_PATH + r"/hyperparameters.txt","w+") 
         L = [" TRAINING: list of hyperparameters " + "(" + name + ", " + datetime.datetime.now().strftime("cuda" + str(args.device_label)+"-%Y-%m-%d") + ") \n",
-			"- Learning rule: " + args.learning_rule + "\n",
+			"- Learning rule: " + learning_rule + "\n",
             "- Weight initialization: " + args.weight_initialization + "\n",
             "- T: {}".format(args.T) + "\n",
             "- Kmax: {}".format(args.Kmax) + "\n",
