@@ -161,7 +161,6 @@ parser.add_argument(
     help='weight sparsity (defaut: 0)')
 #**********************************************************#
 
-
 #*************************COMPRESSION*************************#
 parser.add_argument(
     '--compression',
@@ -176,6 +175,14 @@ parser.add_argument(
     default=False, 
     help='debug (default: False)')
 #**********************************************#
+
+#**********************rand beta**********************#
+parser.add_argument(
+    '--randbeta',
+    type=float,
+    default=0,
+    help='probability of switching beta (defaut: 0)')
+#*****************************************************#
 
 
 args = parser.parse_args()
@@ -381,7 +388,11 @@ if __name__ == '__main__':
             for _ in range(net.ns):
                 hyperdict_neu.append(copy.deepcopy(dicts_neu))
 
-
+        #******RECORD INITIAL WEIGHT ANGLE******#
+        if args.weight_initialization == 'any':
+            angle = computeInitialAngle(net)	
+            results_angle = {'angle': angle}
+        #***************************************#
 
         for epoch in range(1, args.epochs + 1):
             if not args.debug:
@@ -404,6 +415,11 @@ if __name__ == '__main__':
             error_test = evaluate(net, test_loader)            
             error_test_tab.append(error_test) ;
             results_dict = {'error_train_tab' : error_train_tab, 'error_test_tab' : error_test_tab}
+
+            #******RECORD INITIAL WEIGHT ANGLE******#
+            if args.weight_initialization == 'any':
+                results_dict.update(results_angle)    
+            #***************************************#
 
             if args.debug:
                 results_dict.update(results_debug)

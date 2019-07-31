@@ -73,15 +73,21 @@ def train(net, train_loader, epoch, learning_rule):
                 pred = s[0].data.max(1, keepdim=True)[1]
                 loss = (1/(2*s[0].size(0)))*criterion(s[0], targets)
                 ###################################* EQPROP *############################################
-                seq = []
-                for i in range(len(s)):
-                    seq.append(s[i].clone())
+                seq = [i.clone for i in s]
+                #for i in range(len(s)):
+                    #seq.append(s[i].clone())
 
                 #***************************************debug_cep***************************************#
                 if not net.debug_cep:
-                    s = net.forward(data, s, target = targets, beta = net.beta, method = 'nograd')
+                    if net.randbeta > 0:
+                        signbeta = 2*np.random.binomial(1, net.randbeta, 1).item() - 1
+                        beta = signbeta*net.beta
+                    else:
+                        beta = net.beta
+                    #print(beta)
+                    s = net.forward(data, s, target = targets, beta = beta, method = 'nograd')
                     if not net.cep:   
-                        Dw = net.computeGradients(data, s, seq)
+                        Dw = net.computeGradients(data, s, seq, beta)
                         net.updateWeights(Dw)
                 else:
                     s, Dw = net.forward(data, s, target = targets, beta = net.beta, method = 'nograd')
@@ -105,12 +111,25 @@ def train(net, train_loader, epoch, learning_rule):
                 seq = [i.clone() for i in s]
                     #for i in range(len(s)):
                         #seq.append(s[i].clone())
-                s, Dw = net.forward(data, s, target = targets, beta = net.beta, method = 'nograd')
+
+                #******************************************FORMER C-VF******************************************#
+                if net.randbeta > 0:
+                    signbeta = 2*np.random.binomial(1, net.randbeta, 1).item() - 1
+                    beta = signbeta*net.beta
+                else:
+                    beta = net.beta
+
+                if not net.former:	
+                    s, Dw = net.forward(data, s, target = targets, beta = beta, method = 'nograd')
+                else:
+                    s, Dw = net.forward(data, s, target = targets, beta = beta, method = 'nograd', seq = seq)
+                #***********************************************************************************************#
+
                 if not net.cep:
                     if not net.former:                   			
                         net.updateWeights(Dw)
                     else:
-                        Dw_former = net.computeGradients(data, s, seq)
+                        Dw_former = net.computeGradients(data, s, seq, beta)
                         net.updateWeights(Dw_former)
                 #########################################################################################                
 	
@@ -245,6 +264,22 @@ def receipe_mb(net, data, targets, batch_idx):
 
 
 
+def computeInitialAngle(net):
+    counter_align_1 = np.zeros(len(net.w))
+    counter_align_2 = np.zeros(len(net.w))
+    dict = {'align_1': [], 'align_2': []}
+    hyperdict = []
+    for i in range(len(net.w)):
+        hyperdict.append(copy.deepcopy(dict))
+
+    for i in range(int(np.floor((len(net.w) - 1)/2))):
+        size_temp = net.w[2*i].weight.data.view(-1,).size()[0]
+        counter_align_1[2*i] = (torch.sign(net.w[2*i].weight.data) == torch.sign(torch.transpose(net.w[2*i + 1].weight.data, 0, 1))).sum().item()*100/size_temp
+        counter_align_2[2*i] = (180/np.pi)*np.arccos((net.w[2*i].weight.data*torch.transpose(net.w[2*i + 1].weight.data, 0 ,1)).sum().item()/np.sqrt((net.w[2*i].weight.data**2).sum().item()*(net.w[2*i + 1].weight.data**2).sum().item()))
+        hyperdict[2*i]['align_1'] = counter_align_1[2*i]
+        hyperdict[2*i]['align_2'] = counter_align_2[2*i]
+
+    return hyperdict
 
 def evaluate(net, test_loader): 
 
@@ -525,6 +560,8 @@ def createHyperparameterfile(BASE_PATH, name, args):
         if not args.discrete:
             L.append("- dt: {:.3f}".format(args.dt) + "\n")   
 
+        if args.randbeta > 0:
+            L.append("- Probability of beta sign switching: {}".format(args.randbeta) + "\n")
 
         L.append("- layer sizes: {}".format(args.size_tab) + "\n")
 
