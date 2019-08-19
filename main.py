@@ -184,6 +184,14 @@ parser.add_argument(
     help='probability of switching beta (defaut: 0)')
 #*****************************************************#
 
+#**********************initial angle**********************#
+parser.add_argument(
+    '--angle',
+    type=float,
+    default=0,
+    help='initial angle between forward and backward weights(defaut: 0)')
+#*********************************************************#
+
 
 args = parser.parse_args()
 

@@ -307,6 +307,17 @@ class VFdisc(nn.Module):
         if args.weight_initialization == 'tied':
             for i in range(self.ns - 1):
                 w[2*i + 1].weight.data = torch.transpose(w[2*i].weight.data.clone(), 0, 1)
+
+        if args.angle > 0:
+            p_switch = 0.5*(1 - np.cos(np.pi*args.angle/180))
+            for i in range(self.ns - 1):
+                mask = 2*torch.bernoulli((1 - p_switch)*torch.ones_like(w[2*i + 1].weight.data)) - 1
+                w[2*i + 1].weight.data = w[2*i + 1].weight.data*mask
+                angle = (180/np.pi)*np.arccos((w[2*i + 1].weight.data*torch.transpose(w[2*i].weight.data, 0 ,1)).sum().item()/np.sqrt((w[2*i + 1].weight.data**2).sum().item()*(w[2*i].weight.data**2).sum().item()))
+                print('Angle: {:.2f} degrees'.format(angle))
+                del angle, mask
+
+
         self.w = w
         self = self.to(device)
     

@@ -210,7 +210,7 @@ def receipe_mb(net, data, targets, batch_idx):
     #***************************************#
 
     batch_size = data.size(0)                                  
-    s, inds = net.initHidden(batch_size)
+    s = net.initHidden(batch_size)
     if net.cuda:
         data, targets = data.to(net.device), targets.to(net.device)
         for i in range(len(s)):
@@ -562,6 +562,9 @@ def createHyperparameterfile(BASE_PATH, name, args):
 
         if args.randbeta > 0:
             L.append("- Probability of beta sign switching: {}".format(args.randbeta) + "\n")
+
+        if args.angle > 0:
+		    L.append("- Initial angle between forward and backward weights: {}".format(args.angle) + "\n")
 
         L.append("- layer sizes: {}".format(args.size_tab) + "\n")
 
