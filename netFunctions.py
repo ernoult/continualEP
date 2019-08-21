@@ -402,7 +402,7 @@ def receipe(net, train_loader, N_trials):
     counter_zero_Theta = np.zeros((N_trials, len(net.w)))
   
     for n in range(N_trials):
-        print('mini-batch {}/{}'.format(n + 1, N_trials))
+        #print('mini-batch {}/{}'.format(n + 1, N_trials))
         batch_idx, (data, targets) = next(enumerate(train_loader))
         batch_size = data.size(0)                                  
         s = net.initHidden(batch_size)
@@ -412,10 +412,19 @@ def receipe(net, train_loader, N_trials):
                 s[i] = s[i].to(net.device)
         
         #Check dS, nS, DT computation
-        nS, dS, DT, _ = compute_nSdSDT(net, data, targets)
+        nS, dS, dT, _ = compute_nSdSdT(net, data, targets)
+        
+        #*************WATCH OUT*************#
+        DT = []
+        for i in dT:
+            if i is not None:
+                DT.append(torch.cumsum(i, 0))
+            else:
+                DT.append(None)
+        #***********************************#
 
         #Check NT computation		       
-        NT = computeNT(net, data, targets, wholeProcess = False)
+        NT = compute_nT(net, data, targets, wholeProcess = False, diff = False)
 
         #***************************COMPUTE PROPORTION OF SYNAPSES WHICH HAVE THE GOOD SIGN******************************#
         
@@ -429,13 +438,13 @@ def receipe(net, train_loader, N_trials):
                 counter_sign_Theta[n, i] = counter_temp
                 counter_zero_Theta[n, i] = counter_temp_2
 
-                print('layer {}: {:.1f}% (same sign, total), i.e. {:.1f}% (stricly non zero), {:.1f}% (both zero)'.format(int(i/2), counter_temp + counter_temp_2, counter_temp, counter_temp_2))
+                #print('layer {}: {:.1f}% (same sign, total), i.e. {:.1f}% (stricly non zero), {:.1f}% (both zero)'.format(int(i/2), counter_temp + counter_temp_2, counter_temp, counter_temp_2))
 
     
     #***************************************************************************************************************#
 
+    
     print('************Statistics on {} trials************'.format(N_trials))
-
     for i in range(len(NT)):
         if NT[i] is not None:
             print('average layer {}: {:.1f} +- {:.1f}%  (same sign, total), i.e. {:.1f} +- {:.1f}%  (stricly non zero), {:.1f} +- {:.1f}%  (both zero)'.format(int(i/2), 
@@ -448,8 +457,37 @@ def receipe(net, train_loader, N_trials):
 
     print('***********************************************')
     print('done')
+    
+    N_temp = np.sum(counter_sign_Theta.mean(0) > 0)
+    return (1/N_temp)*(counter_sign_Theta.mean(0) + counter_zero_Theta.mean(0)).sum()
 
-        
+
+
+#*********WATCH OUT: compute RelMSE*********#
+def compute_RMSE(nS, dS, NT, DT):
+    hist_S_mean = []
+    hist_T_mean = []
+            
+      
+    for i in range(len(dS)):
+        err = torch.where(((dS[i]**2).sum(0) == 0 )& ((nS[i]**2).sum(0) == 0), torch.zeros_like(dS[i][0, :]),
+                            torch.sqrt(torch.div(((nS[i] - dS[i])**2).sum(0), torch.max( (nS[i]**2).sum(0),(dS[i]**2).sum(0)))))
+        hist_S_mean.append(err.mean().item()) 
+        del err
+
+    for i in range(len(DT)):
+        if NT[i] is not None:        
+            err = torch.where(((DT[i]**2).sum(0) == 0 )& ((NT[i]**2).sum(0) == 0), torch.zeros_like(DT[i][0, :]),
+                                torch.sqrt(torch.div(((NT[i] - DT[i])**2).sum(0), torch.max((NT[i]**2).sum(0),(DT[i]**2).sum(0)))))
+            hist_T_mean.append(err.mean().item())           
+            del err
+            
+    return np.array(hist_S_mean).mean() , np.array(hist_T_mean).mean() 
+
+
+
+
+
 
 def createPath(args):
 
@@ -500,7 +538,7 @@ def createPath(args):
 
         return BASE_PATH, name
     
-    elif args.action == 'plotcurves':
+    elif (args.action == 'plotcurves'):
         BASE_PATH = os.getcwd() + '/' 
 
         if args.cep:
@@ -526,7 +564,60 @@ def createPath(args):
         else:
             tab = []
             for names in files:
-                tab.append(int(names[-1]))
+                if not names[-2] == '-':
+                    tab.append(int(names[-2] + names[-1]))
+                else:    
+                    tab.append(int(names[-1]))
+            print(tab)    			
+            BASE_PATH = BASE_PATH + '/' + 'Trial-' + str(max(tab)+1)                                
+        
+        os.mkdir(BASE_PATH) 
+        filename = 'results'   
+        
+        #********************************************************#
+        copyfile('plotFunctions.py', BASE_PATH + '/plotFunctions.py')
+        #********************************************************#
+
+        return BASE_PATH, name
+
+
+    elif (args.action == 'RMSE') or (args.action == 'prop'):
+        BASE_PATH = os.getcwd() + '/' 
+
+        if args.cep:
+            name = 'c-' + args.learning_rule
+        else:
+            name = args.learning_rule
+                
+        if args.discrete:
+            name = name + '_disc'
+        else:
+            name = name + '_cont'
+        name = name + '_' + str(len(args.size_tab) - 2) + 'hidden'
+                    
+        BASE_PATH = BASE_PATH + name
+
+        if not os.path.exists(BASE_PATH):
+            os.mkdir(BASE_PATH)
+
+        if (args.learning_rule == 'vf'):
+            BASE_PATH = BASE_PATH + '/theta_' + str(args.angle)  
+
+        if not os.path.exists(BASE_PATH):
+            os.mkdir(BASE_PATH)
+     
+        files = os.listdir(BASE_PATH)
+
+        if not files:
+            BASE_PATH = BASE_PATH + '/' + 'Trial-1'
+        else:
+            tab = []
+            for names in files:
+                if not names[-2] == '-':
+                    tab.append(int(names[-2] + names[-1]))
+                else:    
+                    tab.append(int(names[-1]))
+            print(tab)    			
             BASE_PATH = BASE_PATH + '/' + 'Trial-' + str(max(tab)+1)                                
         
         os.mkdir(BASE_PATH) 
@@ -571,7 +662,7 @@ def createHyperparameterfile(BASE_PATH, name, args):
         hyperparameters.writelines(L) 
         hyperparameters.close()
     
-    elif args.action == 'plotcurves':        
+    elif (args.action == 'plotcurves') or (args.action == 'RMSE') or (args.action == 'prop'):  
         hyperparameters = open(BASE_PATH + r"/hyperparameters.txt","w+") 
         L = ["NABLA-DELTA CURVES: list of hyperparameters " + "(" + name + ", " + datetime.datetime.now().strftime("cuda" + str(args.device_label)+"-%Y-%m-%d") + ") \n",
             "- Learning rule: " + args.learning_rule + "\n",
@@ -583,6 +674,12 @@ def createHyperparameterfile(BASE_PATH, name, args):
 
         if not args.discrete:
             L.append("- dt: {:.3f}".format(args.dt) + "\n")   
+
+        if args.randbeta > 0:
+            L.append("- Probability of beta sign switching: {}".format(args.randbeta) + "\n")
+
+        if args.angle > 0:
+		    L.append("- Initial angle between forward and backward weights: {}".format(args.angle) + "\n")
 
 
         L.append("- layer sizes: {}".format(args.size_tab) + "\n")

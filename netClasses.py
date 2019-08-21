@@ -45,6 +45,17 @@ class VFcont(nn.Module):
             for i in range(self.ns - 1):
                 w[2*i + 1].weight.data = torch.transpose(w[2*i].weight.data.clone(), 0, 1)
 
+        #****************************TUNE INITIAL ANGLE****************************#        
+        if args.angle > 0:
+            p_switch = 0.5*(1 - np.cos(np.pi*args.angle/180))
+            for i in range(self.ns - 1):
+                mask = 2*torch.bernoulli((1 - p_switch)*torch.ones_like(w[2*i + 1].weight.data)) - 1
+                w[2*i + 1].weight.data = w[2*i + 1].weight.data*mask
+                angle = (180/np.pi)*np.arccos((w[2*i + 1].weight.data*torch.transpose(w[2*i].weight.data, 0 ,1)).sum().item()/np.sqrt((w[2*i + 1].weight.data**2).sum().item()*(w[2*i].weight.data**2).sum().item()))
+                print('Angle: {:.2f} degrees'.format(angle))
+                del angle, mask
+        #**************************************************************************#
+
         #***********SPARSITY***********#
         if args.sparsity > 0:
             for param in w:
@@ -308,6 +319,7 @@ class VFdisc(nn.Module):
             for i in range(self.ns - 1):
                 w[2*i + 1].weight.data = torch.transpose(w[2*i].weight.data.clone(), 0, 1)
 
+        #****************************TUNE INITIAL ANGLE****************************#        
         if args.angle > 0:
             p_switch = 0.5*(1 - np.cos(np.pi*args.angle/180))
             for i in range(self.ns - 1):
@@ -316,6 +328,7 @@ class VFdisc(nn.Module):
                 angle = (180/np.pi)*np.arccos((w[2*i + 1].weight.data*torch.transpose(w[2*i].weight.data, 0 ,1)).sum().item()/np.sqrt((w[2*i + 1].weight.data**2).sum().item()*(w[2*i].weight.data**2).sum().item()))
                 print('Angle: {:.2f} degrees'.format(angle))
                 del angle, mask
+        #**************************************************************************#
 
 
         self.w = w
@@ -602,6 +615,19 @@ class toyVFcont(nn.Module):
             w[0].weight.data = 0.5*(w[0].weight.data.clone() + torch.transpose(w[0].weight.data.clone(), 0, 1))
             w[3].weight.data = 0.5*(w[3].weight.data.clone() + torch.transpose(w[3].weight.data.clone(), 0, 1))                     
             w[1].weight.data = torch.transpose(w[5].weight.data.clone(), 0, 1)              
+
+
+        #****************************TUNE INITIAL ANGLE****************************#        
+        if args.angle > 0:
+            p_switch = 0.5*(1 - np.cos(np.pi*args.angle/180))
+            mask = 2*torch.bernoulli((1 - p_switch)*torch.ones_like(w[1].weight.data)) - 1
+            w[1].weight.data = w[1].weight.data*mask
+            angle = (180/np.pi)*np.arccos((w[1].weight.data*torch.transpose(w[5].weight.data, 0 ,1)).sum().item()/np.sqrt((w[1].weight.data**2).sum().item()*(w[5].weight.data**2).sum().item()))
+            print('Angle: {:.2f} degrees'.format(angle))
+            del angle, mask
+        #**************************************************************************#
+
+
 
         self.w = w
         self = self.to(device)
@@ -1332,7 +1358,7 @@ class EPdisc(nn.Module):
                     self.updateWeights(dw, debug_cep = True)  
                          
         if return_derivatives:
-            dw = self.computeGradients(data, s, s_old)
+            dw = self.computeGradients(data, s, s_old, self.beta)
             return s, dsdt, dw
         else:
             return s

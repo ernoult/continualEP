@@ -13,7 +13,6 @@ python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512
 #Theorem, energy based, 1 hidden layer, C-EP
 python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --cep --lr_tab 0.00002 0.00002
 
-
 #Theorem, energy based, 1 hidden layer, VF
 python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --learning-rule 'vf'
 

@@ -38,5 +38,39 @@ python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0038
 
 python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.00021 0.0021 0.0125 --epochs 150 --T 100 --Kmax 20 --beta 0.4 --cep --learning-rule 'vf' --randbeta 0.5 --angle 22.5
 
-* For RelMSE computation *in training conditions* : same commands as before, changing the 'action' parser argument into 'plotcurves'
+* For RelMSE computation *in training conditions* : same commands as before, changing the 'action' parser argument into 'RMSE'
+
+
+* For RelMSE computation *in ideal "off-training" conditions* (to get beautiful curves):
+
+- toymodel, EB-VF
+python main.py --action 'plotcurves' --toymodel --no-clamp --batch-size 1 --size_tab 10 50 5 --activation-function 'tanh' --dt 0.08 --beta 0.01 --T 5000 --Kmax 80 --learning-rule 'vf'
+
+- toymodel, EB-C-VF
+python main.py --action 'plotcurves' --toymodel --no-clamp --batch-size 1 --size_tab 10 50 5 --activation-function 'tanh' --dt 0.08 --beta 0.01 --T 5000 --Kmax 80 --learning-rule 'vf' --lr_tab 0.00002 0.00002 --cep
+
+- EB-1h
+python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80
+
+- EB-C-EP-1h
+python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --cep --lr_tab 0.00002 0.00002
+
+- EB-VF-1h
+python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --learning-rule 'vf'
+
+- EB-C-VF-1h
+python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --learning-rule 'vf' --lr_tab 0.00002 0.00002 --cep
+
+- P-1h
+python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'ep'
+
+- P-C-EP-1h
+python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'ep' --lr_tab 0.00002 0.00002 --cep
+
+- P-VF-1h
+python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'vf'
+
+- P-C-VF-1h
+python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'vf' --lr_tab 0.00002 0.00002 --cep
+
 

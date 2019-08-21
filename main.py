@@ -318,15 +318,13 @@ if __name__ == '__main__':
             example_data = torch.rand((args.batch_size, net.size_tab[-1]))
             example_targets = torch.zeros((args.batch_size, net.size_tab[0]))
             example_targets[np.arange(args.batch_size), np.random.randint(net.size_tab[0], size = (1,))] = 1
-           
-        
+                   
         if net.cuda: 
             example_data, example_targets = example_data.to(net.device), example_targets.to(net.device)    
 	    
         x = example_data
         target = example_targets 
-        
-            
+                    
         nS, dS, dT, _ = compute_nSdSdT(net, x, target)
         plot_S(nS, dS)
         plt.show()
@@ -334,9 +332,7 @@ if __name__ == '__main__':
 	 
         plot_T(nT, dT, args)
         plt.show()
-        
-
-                		
+                        		
         #create path              
         BASE_PATH, name = createPath(args)
 
@@ -347,7 +343,36 @@ if __name__ == '__main__':
                           
         outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
         pickle.dump(results_dict, outfile)
-        outfile.close()     
+        outfile.close()
+
+
+    if args.action == 'RMSE':
+
+        batch_idx, (example_data, example_targets) = next(enumerate(train_loader))    
+                   
+        if net.cuda: 
+            example_data, example_targets = example_data.to(net.device), example_targets.to(net.device)    
+	    
+        x = example_data
+        target = example_targets 
+                    
+        nS, dS, dT, _ = compute_nSdSdT(net, x, target)
+        nT = compute_nT(net, x, target)
+                        		
+        #create path              
+        BASE_PATH, name = createPath(args)
+
+        #save hyperparameters
+        createHyperparameterfile(BASE_PATH, name, args)
+        
+        #*******WATCH OUT: compute and save *ONLY* RelMSE*******#
+        RMSE_S, RMSE_T = compute_RMSE(nS, dS, nT, dT)
+        results_dict = {'RMSE_S': RMSE_S , 'RMSE_T': RMSE_T}
+                          
+        outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
+        pickle.dump(results_dict, outfile)
+        outfile.close()
+     
                                                             
                                     
     elif args.action == 'train':
@@ -443,5 +468,17 @@ if __name__ == '__main__':
                 outfile.close()                  
        
 
-    elif args.action == 'receipe':
-        receipe(net, train_loader, args.N_trials)        
+    elif args.action == 'prop':
+        prop = receipe(net, train_loader, 20)
+	print(prop)
+        #create path              
+        BASE_PATH, name = createPath(args)
+
+        #save hyperparameters
+        createHyperparameterfile(BASE_PATH, name, args)
+        
+        results_dict = {'prop': prop}
+                          
+        outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
+        pickle.dump(results_dict, outfile)
+        outfile.close()     

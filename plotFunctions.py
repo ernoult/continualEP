@@ -542,7 +542,13 @@ if __name__ == '__main__':
     if 'error_train_bptt_tab' in results_dict:
         plot_results('error', results_dict['error_train_bptt_tab'], results_dict['error_test_bptt_tab'] )
         plt.title('BPTT')
-	
+
+    if 'RMSE_S' in results_dict:
+        print('RelMSE on neurons: {}'.format(results_dict['RMSE_S']))
+        print('RelMSE on synapses: {}'.format(results_dict['RMSE_T']))
+
+    if 'prop' in results_dict:
+        print('Proportion of synapses having the good sign: {}'.format(results_dict['prop']))	
     plt.show()   
     
         
