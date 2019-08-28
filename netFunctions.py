@@ -400,6 +400,7 @@ def receipe(net, train_loader, N_trials):
 
     counter_sign_Theta = np.zeros((N_trials, len(net.w)))
     counter_zero_Theta = np.zeros((N_trials, len(net.w)))
+    counter_tot = np.zeros(N_trials)
   
     for n in range(N_trials):
         #print('mini-batch {}/{}'.format(n + 1, N_trials))
@@ -427,23 +428,28 @@ def receipe(net, train_loader, N_trials):
         NT = compute_nT(net, data, targets, wholeProcess = False, diff = False)
 
         #***************************COMPUTE PROPORTION OF SYNAPSES WHICH HAVE THE GOOD SIGN******************************#
-        
+	
+        #***WATCH OUT***#
+        size_tot = 0
+        counter_tot_temp = 0
         for i in range(len(NT)):
             if NT[i] is not None:
                 size_temp = DT[i][-1, :].view(-1,).size()[0]
-                counter_temp = ((torch.sign(NT[i][-1, :]) == torch.sign(DT[i][-1, :])) & (torch.abs(NT[i][-1, :]) > 0) & (torch.abs(DT[i][-1, :]) > 0)).sum().item()*100/size_temp
+                size_tot += size_temp
+                counter_temp = ((torch.sign(NT[i][-1, :]) == torch.sign(DT[i][-1, :])) & (torch.abs(NT[i][-1, :]) > 0) & (torch.abs(DT[i][-1, :]) > 0)).sum().item()
 
-                counter_temp_2 = ((NT[i][-1, :] == DT[i][-1, :]) & (NT[i][-1, :] == torch.zeros_like(NT[i][-1, :]))).sum().item()*100/size_temp
-                                 
-                counter_sign_Theta[n, i] = counter_temp
-                counter_zero_Theta[n, i] = counter_temp_2
+                counter_temp_2 = ((NT[i][-1, :] == DT[i][-1, :]) & (NT[i][-1, :] == torch.zeros_like(NT[i][-1, :]))).sum().item()
+                counter_tot_temp += counter_temp + counter_temp_2
+               
+                counter_sign_Theta[n, i] = counter_temp*100/size_temp
+                counter_zero_Theta[n, i] = counter_temp_2*100/size_temp
 
                 #print('layer {}: {:.1f}% (same sign, total), i.e. {:.1f}% (stricly non zero), {:.1f}% (both zero)'.format(int(i/2), counter_temp + counter_temp_2, counter_temp, counter_temp_2))
 
-    
+        counter_tot[n] = counter_tot_temp*100/size_tot
     #***************************************************************************************************************#
+          
 
-    
     print('************Statistics on {} trials************'.format(N_trials))
     for i in range(len(NT)):
         if NT[i] is not None:
@@ -458,35 +464,38 @@ def receipe(net, train_loader, N_trials):
     print('***********************************************')
     print('done')
     
-    N_temp = np.sum(counter_sign_Theta.mean(0) > 0)
-    return (1/N_temp)*(counter_sign_Theta.mean(0) + counter_zero_Theta.mean(0)).sum()
-
+    return counter_tot.mean(0) 
 
 
 #*********WATCH OUT: compute RelMSE*********#
 def compute_RMSE(nS, dS, NT, DT):
-    hist_S_mean = []
-    hist_T_mean = []
-            
+    RMSE_S = 0
+    RMSE_T = 0
+    size_temp = 0        
       
     for i in range(len(dS)):
-        err = torch.where(((dS[i]**2).sum(0) == 0 )& ((nS[i]**2).sum(0) == 0), torch.zeros_like(dS[i][0, :]),
+        RMSE_temp = torch.where(((dS[i]**2).sum(0) == 0 )& ((nS[i]**2).sum(0) == 0), torch.zeros_like(dS[i][0, :]),
                             torch.sqrt(torch.div(((nS[i] - dS[i])**2).sum(0), torch.max( (nS[i]**2).sum(0),(dS[i]**2).sum(0)))))
-        hist_S_mean.append(err.mean().item()) 
-        del err
+        RMSE_S += RMSE_temp.sum()
+        size_temp += RMSE_temp.view(-1,).size()[0]
+        del RMSE_temp
+    
+    RMSE_S = RMSE_S/size_temp
 
+    del size_temp
+
+    size_temp = 0
     for i in range(len(DT)):
         if NT[i] is not None:        
-            err = torch.where(((DT[i]**2).sum(0) == 0 )& ((NT[i]**2).sum(0) == 0), torch.zeros_like(DT[i][0, :]),
+            RMSE_temp = torch.where(((DT[i]**2).sum(0) == 0 )& ((NT[i]**2).sum(0) == 0), torch.zeros_like(DT[i][0, :]),
                                 torch.sqrt(torch.div(((NT[i] - DT[i])**2).sum(0), torch.max((NT[i]**2).sum(0),(DT[i]**2).sum(0)))))
-            hist_T_mean.append(err.mean().item())           
-            del err
+            RMSE_T += RMSE_temp.sum()
+            size_temp += RMSE_temp.view(-1,).size()[0]
+            del RMSE_temp
+
+    RMSE_T = RMSE_T/size_temp
             
-    return np.array(hist_S_mean).mean() , np.array(hist_T_mean).mean() 
-
-
-
-
+    return RMSE_S, RMSE_T
 
 
 def createPath(args):
