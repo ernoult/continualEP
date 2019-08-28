@@ -547,6 +547,10 @@ if __name__ == '__main__':
         print('RelMSE on neurons: {}'.format(results_dict['RMSE_S']))
         print('RelMSE on synapses: {}'.format(results_dict['RMSE_T']))
 
+    if 'theta_S' in results_dict:
+        print('Angle on neurons: {}'.format(results_dict['theta_S']))
+        print('Angle on synapses: {}'.format(results_dict['theta_T']))
+
     if 'prop' in results_dict:
         print('Proportion of synapses having the good sign: {}'.format(results_dict['prop']))	
     plt.show()   

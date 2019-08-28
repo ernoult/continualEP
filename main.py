@@ -372,6 +372,34 @@ if __name__ == '__main__':
         outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
         pickle.dump(results_dict, outfile)
         outfile.close()
+
+
+    if args.action == 'cosRMSE':
+
+        batch_idx, (example_data, example_targets) = next(enumerate(train_loader))    
+                   
+        if net.cuda: 
+            example_data, example_targets = example_data.to(net.device), example_targets.to(net.device)    
+	    
+        x = example_data
+        target = example_targets 
+                    
+        nS, dS, dT, _ = compute_nSdSdT(net, x, target)
+        nT = compute_nT(net, x, target)
+                        		
+        #create path              
+        BASE_PATH, name = createPath(args)
+
+        #save hyperparameters
+        createHyperparameterfile(BASE_PATH, name, args)
+        
+        #*******WATCH OUT: compute and save *ONLY* RelMSE*******#
+        theta_S, theta_T = compute_cosRMSE(nS, dS, nT, dT)
+        results_dict = {'theta_S': theta_S , 'theta_T': theta_T}
+                          
+        outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
+        pickle.dump(results_dict, outfile)
+        outfile.close()
      
                                                             
                                     
@@ -445,7 +473,7 @@ if __name__ == '__main__':
                                      
                 results_debug = {'hyperdict_neu': hyperdict_neu, 'hyperdict_syn': hyperdict_syn}
 
-            error_test = evaluate(net, test_loader)            
+            error_test = evaluate(net, test_loader)         
             error_test_tab.append(error_test) ;
             results_dict = {'error_train_tab' : error_train_tab, 'error_test_tab' : error_test_tab}
 
@@ -470,7 +498,7 @@ if __name__ == '__main__':
 
     elif args.action == 'prop':
         prop = receipe(net, train_loader, 20)
-	print(prop)
+        print(prop)
         #create path              
         BASE_PATH, name = createPath(args)
 

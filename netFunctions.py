@@ -497,6 +497,39 @@ def compute_RMSE(nS, dS, NT, DT):
             
     return RMSE_S, RMSE_T
 
+#*********WATCH OUT: compute cosRelMSE*********#
+def compute_cosRMSE(nS, dS, nT, dT):
+    NT = torch.tensor([], device = nT[0].device)
+    DT = torch.tensor([], device = dT[0].device)
+    NS = torch.tensor([], device = nS[0].device)
+    DS = torch.tensor([], device = dS[0].device)
+
+    for i in nT:
+        if i is not None:
+            NT = torch.cat((NT, i.sum(0).view(-1,1)) , 0)
+            
+
+    for i in dT:
+        if i is not None:
+            DT = torch.cat((DT, i.sum(0).view(-1,1)) , 0)
+
+    for i in nS:
+        NS = torch.cat((NS, i.sum(0).view(-1,1)) , 0)
+
+    for i in dS:
+        DS = torch.cat((DS, i.sum(0).view(-1,1)) , 0)
+
+    theta_S = 0
+    theta_T = 0
+    size_temp = 0
+
+    theta_T =(180/np.pi) * np.arccos(torch.mm(NT.t(), DT).item()/(np.sqrt(torch.mm(NT.t(), NT).item()*torch.mm(DT.t(), DT).item())))
+
+    theta_S =(180/np.pi) * np.arccos(torch.mm(NS.t(), DS).item()/(np.sqrt(torch.mm(NS.t(), NS).item()*torch.mm(DS.t(), DS).item())))
+
+    #print(theta_T)
+    return theta_S, theta_T
+
 
 def createPath(args):
 
@@ -590,7 +623,7 @@ def createPath(args):
         return BASE_PATH, name
 
 
-    elif (args.action == 'RMSE') or (args.action == 'prop'):
+    elif (args.action == 'RMSE') or (args.action == 'prop') or (args.action == 'cosRMSE'):
         BASE_PATH = os.getcwd() + '/' 
 
         if args.cep:
@@ -664,14 +697,14 @@ def createHyperparameterfile(BASE_PATH, name, args):
             L.append("- Probability of beta sign switching: {}".format(args.randbeta) + "\n")
 
         if args.angle > 0:
-		    L.append("- Initial angle between forward and backward weights: {}".format(args.angle) + "\n")
+            L.append("- Initial angle between forward and backward weights: {}".format(args.angle) + "\n")
 
         L.append("- layer sizes: {}".format(args.size_tab) + "\n")
 
         hyperparameters.writelines(L) 
         hyperparameters.close()
     
-    elif (args.action == 'plotcurves') or (args.action == 'RMSE') or (args.action == 'prop'):  
+    elif (args.action == 'plotcurves') or (args.action == 'RMSE') or (args.action == 'prop') or (args.action == 'cosRMSE'):  
         hyperparameters = open(BASE_PATH + r"/hyperparameters.txt","w+") 
         L = ["NABLA-DELTA CURVES: list of hyperparameters " + "(" + name + ", " + datetime.datetime.now().strftime("cuda" + str(args.device_label)+"-%Y-%m-%d") + ") \n",
             "- Learning rule: " + args.learning_rule + "\n",
@@ -688,7 +721,7 @@ def createHyperparameterfile(BASE_PATH, name, args):
             L.append("- Probability of beta sign switching: {}".format(args.randbeta) + "\n")
 
         if args.angle > 0:
-		    L.append("- Initial angle between forward and backward weights: {}".format(args.angle) + "\n")
+            L.append("- Initial angle between forward and backward weights: {}".format(args.angle) + "\n")
 
 
         L.append("- layer sizes: {}".format(args.size_tab) + "\n")
