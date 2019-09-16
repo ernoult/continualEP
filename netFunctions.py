@@ -524,9 +524,41 @@ def compute_cosRMSE(nS, dS, nT, dT):
     size_temp = 0
 
     theta_T =(180/np.pi) * np.arccos(torch.mm(NT.t(), DT).item()/(np.sqrt(torch.mm(NT.t(), NT).item()*torch.mm(DT.t(), DT).item())))
-
     theta_S =(180/np.pi) * np.arccos(torch.mm(NS.t(), DS).item()/(np.sqrt(torch.mm(NS.t(), NS).item()*torch.mm(DS.t(), DS).item())))
+    #print(theta_T)
+    return theta_S, theta_T
 
+
+def compute_cosRMSE_2(nS, dS, nT, dT):
+    NT = []
+    DT = []
+    NS = []
+    DS = []
+
+    for i in nT:
+        if i is not None:
+            NT.append(i.sum(0).view(-1,1))
+            
+
+    for i in dT:
+        if i is not None:
+            DT.append(i.sum(0).view(-1,1))
+
+    for i in nS:
+        NS.append(i.sum(0).view(-1,1))
+
+    for i in dS:
+        DS.append(i.sum(0).view(-1,1))		
+
+    theta_S = 0
+    theta_T = 0
+    size_temp = 0
+
+    for i in range(len(DT)):
+        theta_T += (1/len(DT))*(180/np.pi) * np.arccos(torch.mm(NT[i].t(), DT[i]).item()/(np.sqrt(torch.mm(NT[i].t(), NT[i]).item()*torch.mm(DT[i].t(), DT[i]).item())))
+
+    for i in range(len(NS)):
+        theta_S += (1/len(NS))*(180/np.pi) * np.arccos(torch.mm(NS[i].t(), DS[i]).item()/(np.sqrt(torch.mm(NS[i].t(), NS[i]).item()*torch.mm(DS[i].t(), DS[i]).item())))
     #print(theta_T)
     return theta_S, theta_T
 

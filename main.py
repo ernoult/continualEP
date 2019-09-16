@@ -3,6 +3,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 import torch.optim as optim
 import pickle
+import datetime
 
 from netClasses import *
 from netFunctions import * 
@@ -388,18 +389,19 @@ if __name__ == '__main__':
         nT = compute_nT(net, x, target)
                         		
         #create path              
-        BASE_PATH, name = createPath(args)
+        #BASE_PATH, name = createPath(args)
 
         #save hyperparameters
-        createHyperparameterfile(BASE_PATH, name, args)
+        #createHyperparameterfile(BASE_PATH, name, args)
         
         #*******WATCH OUT: compute and save *ONLY* RelMSE*******#
         theta_S, theta_T = compute_cosRMSE(nS, dS, nT, dT)
-        results_dict = {'theta_S': theta_S , 'theta_T': theta_T}
+        print(theta_T)
+        #results_dict = {'theta_S': theta_S , 'theta_T': theta_T}
                           
-        outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
-        pickle.dump(results_dict, outfile)
-        outfile.close()
+        #outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
+        #pickle.dump(results_dict, outfile)
+        #outfile.close()
      
                                                             
                                     
@@ -455,6 +457,10 @@ if __name__ == '__main__':
             results_angle = {'angle': angle}
         #***************************************#
 
+        #*****MEASURE ELAPSED TIME*****#
+        start_time = datetime.datetime.now()
+        #******************************#
+
         for epoch in range(1, args.epochs + 1):
             if not args.debug:
                 error_train = train(net, train_loader, epoch, args.learning_rule)
@@ -475,7 +481,7 @@ if __name__ == '__main__':
 
             error_test = evaluate(net, test_loader)         
             error_test_tab.append(error_test) ;
-            results_dict = {'error_train_tab' : error_train_tab, 'error_test_tab' : error_test_tab}
+            results_dict = {'error_train_tab' : error_train_tab, 'error_test_tab' : error_test_tab,  'elapsed_time': datetime.datetime.now() - start_time}
 
             #******RECORD INITIAL WEIGHT ANGLE******#
             if args.weight_initialization == 'any':
