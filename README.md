@@ -1,6 +1,6 @@
 *******************************************************
 
-"Equilibrium Propagation with Continual Weight Updates" 
+# "Equilibrium Propagation with Continual Weight Updates" 
 
 *******************************************************
 
@@ -272,13 +272,11 @@ VII - Commands to be run in the terminal to reproduce the results of the paper
 
     -  Curve 'C-VF-1h': run the following command with angle_value \in {0, 22.5, 45, 67.5, 90, 112.5, 135, 167.5, 180}
 
-      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0038 0.0076 --epochs 100 --T 40 --Kmax 15 --beta 0.20 --cep --learning-rule 'vf' 
-      --randbeta 0.5 --angle angle_value
+     python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0038 0.0076 --epochs 100 --T 40 --Kmax 15 --beta 0.20 --cep --learning-rule 'vf' --randbeta 0.5 --angle angle_value
 
     -  Curve 'C-VF-2h': run the following command with angle_value \in {0, 22.5, 45, 67.5, 90, 112.5, 135, 167.5, 180}
 
-      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.00016 0.0016 0.009 --epochs 150 --T 100 --Kmax 20 --beta 0.35
-      --cep --learning-rule 'vf' --randbeta 0.5 --angle angle_value
+     python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.00016 0.0016 0.009 --epochs 150 --T 100 --Kmax 20 --beta 0.35 --cep --learning-rule 'vf' --randbeta 0.5 --angle angle_value
 
 
   iii) Subsection 4.3, Fig. 5 (a) [EP, C-EP and C-VF results as a function of the initial angle between the total EP update and the total BPTT gradient]:
@@ -368,8 +366,8 @@ VII - Commands to be run in the terminal to reproduce the results of the paper
  
    i) Debugging procedure of C-EP for 1 hidden layer:
 
-      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.04 0.08 --epochs 30 --T 30 --Kmax 10 --beta 0.1 --cep --debug-cep
+     python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.04 0.08 --epochs 30 --T 30 --Kmax 10 --beta 0.1 --cep --debug-cep
 
    ii) Debugging procedure of C-EP for 2 hidden layers:
 
-      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.005 0.05 0.2 --epochs 50 --T 100 --Kmax 20 --beta 0.5 --cep --debug-cep
+     python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.005 0.05 0.2 --epochs 50 --T 100 --Kmax 20 --beta 0.5 --cep --debug-cep
