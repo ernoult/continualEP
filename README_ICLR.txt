@@ -105,7 +105,7 @@ III - Details about main.py
     --lr_tab: learning rates tab, to be provided from the output layer towards the first layer.
               Example: --lr_tab 0.01 0.04 will apply a learning rate of 0.01 to W_{01} and 0.04 to W_{12}.
 
-    --randbeta: probability that the sign of beta switches accross mini-batches (see Appendix ...). Default: 0. 	
+    --randbeta: probability that the sign of beta switches accross mini-batches (see Appendix F.1 for details). Default: 0. 	
 
 
   ii) Network arguments: 
@@ -133,7 +133,7 @@ III - Details about main.py
 
     --c-ep: specifies whether the updates are continual (True) or not (False). Default: False. 
 
-    --angle: specify the weight angle between forward and backward weights in degrees (default: 0 degree).
+    --angle: specify the weight angle between forward and backward weights in degrees (default: 0 degree). See Appendix F.1 for the angle definition.
                             
 
   iii) Others:
@@ -142,7 +142,7 @@ III - Details about main.py
 
     --device-label: selects the cuda device to run the simulation on. 
 
-    --debug-cep: activates the debugging procedure of C-EP (see Appendix ... for the pseudo-algorithm). Default: False.
+    --debug-cep: activates the debugging procedure of C-EP (see Appendix ... for the pseudo-algorithm). Default: False. See Appendix F.2 for details about the debugging procedure.
 
     --seed: selects a specific seed (default: None). 
 
@@ -161,7 +161,7 @@ III - Details about main.py
 IV-  Details about netClasses.py
 
 
-* There are four network classes:
+* There are four network classes (see Appendix E for the precise model definitions):
 
   i) EPcont: builds fully connected layered architectures with tied weights in the real-time setting.
 
@@ -311,21 +311,82 @@ VII - Commands to be run in the terminal to reproduce the results of the paper
       --cep --learning-rule 'vf' --randbeta 0.5 --angle angle_value --angle-grad
 
 
-  iv) Subsection 4.3, Fig. 5 (b)
+  iv) Subsection 4.3, Fig. 5 (b) [select the same seed for each plot to draw a direct comparison]
 
     - EP in the continuous-time setting, 1 hidden layer (EP-1h):
 
+      python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --seed 0
+
     - C-EP in the continuous-time setting, 1 hidden layer (C-EP-1h):
+
+
+      python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --cep --lr_tab 0.00002 0.00002
+
 
     - C-VF in the continuous-time setting, 1 hidden layer (C-VF-1h) with an angle of 45 degrees between forward and backward weights:
 
-
+      python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --learning-rule 'vf' --lr_tab 0.00002 0.00002 --cep
         
 
 
+* Appendix E.6:
+
+   i) Fig. 8-9, left (C-EP in the discrete-time setting with \eta = 0):
+ 
+     python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'ep'
+
+   ii) Fig. 8-9, right (C-EP in the discrete-time setting with \eta > 0):
+ 
+     python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'ep' --lr_tab 0.00002 0.00002 --cep
+
+   iii) Fig. 10-11, left (C-EP in the real-time setting with \eta = 0):
+
+     python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80
+
+   iv) Fig. 10-11, right (C-EP in the real-time setting with \eta > 0):
+
+     python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --cep --lr_tab 0.00002 0.00002
+
+   v) Fig. 12-13, left (C-VF in the discrete-time setting with \eta = 0 and a weight angle of 0 degree):
+ 
+     python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'vf'
+
+   vi) Fig. 12-13, right (C-VF in the discrete-time setting with \eta > 0 and a weight angle of 0 degree):
+ 
+     python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10 --learning-rule 'vf' --lr_tab 0.00002 0.00002 --cep
 
 
-* Appendix C:
+   vii) Fig. 14-15, left (C-VF in the real-time setting with \eta = 0 and a weight angle of 0 degree):
+ 
+     python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --learning-rule 'vf'
+
+   viii) Fig. 14-15, right (C-VF in the real-time setting with \eta > 0 and a weight angle of 0 degree):
+ 
+     python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.005 --T 800 --Kmax 80 --learning-rule 'vf' --lr_tab 0.00002 0.00002 --cep
+
+
+* Appendix F.2:
+ 
+   i) Debugging procedure of C-EP for 1 hidden layer:
+
+      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.04 0.08 --epochs 30 --T 30 --Kmax 10 --beta 0.1 --cep --debug-cep
+
+   ii) Debugging procedure of C-EP for 2 hidden layers:
+
+      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.005 0.05 0.2 --epochs 50 --T 100 --Kmax 20 --beta 0.5 --cep --debug-cep
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
  

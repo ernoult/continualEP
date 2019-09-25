@@ -224,13 +224,9 @@ if __name__ == '__main__':
 
                 
     if args.action == 'plotcurves':
-        if (not args.toymodel):
-            batch_idx, (example_data, example_targets) = next(enumerate(train_loader))    
-        else:
-            example_data = torch.rand((args.batch_size, net.size_tab[-1]))
-            example_targets = torch.zeros((args.batch_size, net.size_tab[0]))
-            example_targets[np.arange(args.batch_size), np.random.randint(net.size_tab[0], size = (1,))] = 1
-                   
+
+        batch_idx, (example_data, example_targets) = next(enumerate(train_loader))    
+
         if net.cuda: 
             example_data, example_targets = example_data.to(net.device), example_targets.to(net.device)    
 	    
@@ -253,34 +249,11 @@ if __name__ == '__main__':
         
         results_dict = {'nS' : nS, 'dS' : dS, 'nT': nT, 'dT': dT, 'args': args}
                           
-        outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
-        pickle.dump(results_dict, outfile)
-        outfile.close()
-
-    if args.action == 'cosRMSE':
-
-        batch_idx, (example_data, example_targets) = next(enumerate(train_loader))                      
-        if net.cuda: 
-            example_data, example_targets = example_data.to(net.device), example_targets.to(net.device)    	    
-        x = example_data
-        target = example_targets                    
-        nS, dS, dT, _ = compute_nSdSdT(net, x, target)
-        nT = compute_nT(net, x, target)                       
-        theta_T = compute_cosRMSE(nS, dS, nT, dT)
-        results_dict = {'theta_T': theta_T}
+        #outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
+        #pickle.dump(results_dict, outfile)
+        #outfile.close()
 
 
-        #create path             
- 
-        BASE_PATH, name = createPath(args)
-
-        #save hyperparameters
-        createHyperparameterfile(BASE_PATH, name, args)
-                          
-        outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
-        pickle.dump(results_dict, outfile)
-        outfile.close()
-     
                   
     elif args.action == 'train':
 
