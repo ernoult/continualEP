@@ -224,7 +224,7 @@ def compute_diffT(NT):
 
 
 #*********WATCH OUT: compute cosRelMSE*********#
-def compute_cosRMSE(nS, dS, nT, dT):
+def compute_angleGrad(nS, dS, nT, dT):
     NT = torch.tensor([], device = nT[0].device)
     DT = torch.tensor([], device = dT[0].device)
 
@@ -277,7 +277,7 @@ def createPath(args):
                     tab.append(int(names[-2] + names[-1]))
                 else:    
                     tab.append(int(names[-1]))
-            print(tab)    			
+   			
             BASE_PATH = BASE_PATH + '/' + 'Trial-' + str(max(tab)+1)                                
         
         os.mkdir(BASE_PATH) 
@@ -319,7 +319,7 @@ def createPath(args):
                     tab.append(int(names[-2] + names[-1]))
                 else:    
                     tab.append(int(names[-1]))
-            print(tab)    			
+   			
             BASE_PATH = BASE_PATH + '/' + 'Trial-' + str(max(tab)+1)                                
         
         os.mkdir(BASE_PATH) 
@@ -368,7 +368,7 @@ def createPath(args):
                     tab.append(int(names[-2] + names[-1]))
                 else:    
                     tab.append(int(names[-1]))
-            print(tab)    			
+ 			
             BASE_PATH = BASE_PATH + '/' + 'Trial-' + str(max(tab)+1)                                
         
         os.mkdir(BASE_PATH) 
@@ -390,7 +390,6 @@ def createHyperparameterfile(BASE_PATH, name, args):
         hyperparameters = open(BASE_PATH + r"/hyperparameters.txt","w+") 
         L = [" TRAINING: list of hyperparameters " + "(" + name + ", " + datetime.datetime.now().strftime("cuda" + str(args.device_label)+"-%Y-%m-%d") + ") \n",
 			"- Learning rule: " + learning_rule + "\n",
-            "- Weight initialization: " + args.weight_initialization + "\n",
             "- T: {}".format(args.T) + "\n",
             "- Kmax: {}".format(args.Kmax) + "\n",
             "- beta: {:.2f}".format(args.beta) + "\n", 
@@ -413,7 +412,7 @@ def createHyperparameterfile(BASE_PATH, name, args):
         hyperparameters.writelines(L) 
         hyperparameters.close()
     
-    elif (args.action == 'plotcurves') or (args.action == 'RMSE') or (args.action == 'prop') or (args.action == 'cosRMSE'):  
+    elif (args.action == 'plotcurves'):  
         hyperparameters = open(BASE_PATH + r"/hyperparameters.txt","w+") 
         L = ["NABLA-DELTA CURVES: list of hyperparameters " + "(" + name + ", " + datetime.datetime.now().strftime("cuda" + str(args.device_label)+"-%Y-%m-%d") + ") \n",
             "- Learning rule: " + args.learning_rule + "\n",

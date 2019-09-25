@@ -198,35 +198,33 @@ V - Details about netFunctions.py
 
   ii) evaluate: evaluates the model on the test set. 
 
-  iii) compute_nSdSdT: computes \nabla^{BPTT}_{s} (nS), \Delta^{EP}_{s} (dS) and \Delta^{EP}_{\theta} (dT).
+  iii) compute_nSdSdT: computes \nabla^{BPTT}_{s} (nS), \Delta^{C-EP}_{s} (dS) and \Delta^{C-EP}_{\theta} (dT).
                     
 
   iv) compute_nT: computes \nabla^{BPTT}_{\theta} (nT). 
 
-  v) compute_diffT: computes \nabla^{BPTT}_{\theta} and \delta^{EP}_{\theta} from \sum(\nabla^{BPTT}_{\theta}) and 
-                  \sum(\delta^{EP}_{\theta}).
+  v) compute_diffT: computes \nabla^{BPTT}_{\theta} (resp. \Delta^{C-EP}_{\theta}) from \sum(\nabla^{BPTT}_{\theta}) 
+                   (resp. \sum(\Delta^{C-EP}_{\theta})).
  
-  #RESTART FROM HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
+
+  viii)	compute_angleGrad: computes the angle between the total C-EP update and the total BPTT gradient. 
+
 
   vii) createPath: creates a path to a directory depending on the date, the gpu device used, the model simulated and on the trial number
                 where the results will be saved. 
 
-  viii) createHyperparameterfile: creates a .txt file saved along with the results with all the hyperparameters. 
+  ix) createHyperparameterfile: creates a .txt file saved along with the results with all the hyperparameters. 
 
 
 VI - Details about plotFunctions.py
 
 * plotFunctions.py contains the following functions:
 
-  i) plot_T: plots \nabla^{BPTT}_{\theta} and \Delta^{EP}_{\theta} processes.
+  i) plot_T: plots \nabla^{BPTT}_{\theta} and \Delta^{C-EP}_{\theta} processes.
 
-  ii) plot_S: plots \nabla^{BPTT}_{s} and \Delta^{EP}_{s} processes.
+  ii) plot_S: plots \nabla^{BPTT}_{s} and \Delta^{C-EP}_{s} processes.
 
-  iii) compute_nTdT: same function as in netFunctions.py. 
-
-  iv) compute_Hist: computes the Relative Mean Squared error (RMSE) between \Delta^{EP} and \nabla^{BPTT} processes.
-
-  v) plot_results: plots the test and train accuracy as a function of epochs. 
+  iii) plot_results: plots the test and train accuracy as a function of epochs. 
 
 
 ******************************************************************************
@@ -239,100 +237,96 @@ VII - Commands to be run in the terminal to reproduce the results of the paper
   plotFunctions.py has to be run within the result folder. 
 
 * Section 4
+  
+  i) Subsection 4.1, Table of Fig. 4 [C-EP and C-VF results (with symmetric weights initially) on MNIST]:
 
-  i) Subsection 4.2, Fig. 2 (GDU property in the energy-based setting, toy model):
+    - EP in the discrete-time setting, 1 hidden layer (EP-1h):
 
-    python main.py --action 'plotcurves' --toymodel --no-clamp --batch-size 1 --size_tab 10 50 5 --activation-function 'tanh' --dt 0.08 --beta 0.01 --T 5000 --Kmax 80
+      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.04 0.08 --epochs 30 --T 30 --Kmax 10 --beta 0.1
 
-  ii) Subsection 4.3, Fig. 3 (RMSE analysis on the fully connected layered architectures, in the canonical and prototypical settings):
+    - EP in the discrete-time setting, 2 hidden layers (EP-2h):
+  
+      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.005 0.05 0.2 --epochs 50 --T 100 --Kmax 20 --beta 0.5
 
-    - Energy-based setting, 1 hidden layer: 
+    - C-EP in the discrete-time setting, 1 hidden layer (C-EP-1h):
 
-      python main.py --action 'plotcurves' --no-clamp --batch-size 20 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.001 --T 800 --Kmax 80
+      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0028 0.0056 --epochs 100 --T 40 --Kmax 15 --beta 0.2 --cep
 
-    - Energy-based setting, 2 hidden layers: 
-      
-      python main.py --action 'plotcurves' --no-clamp --batch-size 20 --size_tab 10 512 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.01 --T 5000 --Kmax 150
-      
-    - Energy-based setting, 3 hidden layers: 
+    - C-EP in the discrete-time setting, 2 hidden layers (C-EP-2h):
 
-      python main.py --action 'plotcurves' --no-clamp --batch-size 20 --size_tab 10 512 512 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.02 --T 30000 --Kmax 200  
-
-    - Prototypical setting, 1 hidden layer: 
-
-      python main.py --action 'plotcurves' --discrete --batch-size 20 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10  
-
-    - Prototypical setting, 2 hidden layers:
-
-      python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 512 784 --activation-function 'tanh' --beta 0.01 --T 1500 --Kmax 40
-        
-    - Prototypical setting, 3 hidden layers:
-
-      python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 512 512 784 --activation-function 'tanh' --beta 0.015 --T 5000 --Kmax 40
-
-  iii) Subsection 4.4, Fig. 4 (GDU property on the convolutional architecture):
-
-    python main.py --action 'plotcurves' --batch-size 1 --size_tab 10 --C_tab 64 32 1 --activation-function 'hardsigm' --beta 0.02 --T 5000 --Kmax 10
-
-  iv) Table 1 (training simulation results):
-
-    - Energy-based setting, 1 hidden layer (EB-1h):
+      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.00018 0.0018 0.01 --epochs 150 --T 100 --Kmax 20 --beta 0.5 --cep
     
-      python main.py --action 'train' --size_tab 10 512 784 --lr_tab 0.05 0.1 --epochs 30 --T 100 --Kmax 12 --beta 0.5 --dt 0.2 --benchmark
+    - C-VF in the discrete-time setting, 1 hidden layer (C-VF-1h)
+      [the initial angle between forward and backward weights is zero, i.e. \Psi(\theta_f, \theta_b) = 0]:
 
-    - Energy-based setting, 2 hidden layers (EB-2h):
+      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0038 0.0076 --epochs 100 --T 40 --Kmax 15 --beta 0.20 --cep --learning-rule 'vf' 
+      --randbeta 0.5
 
-      python main.py --action 'train' --size_tab 10 512 512 784 --lr_tab 0.01 0.1 0.4 --epochs 50 --T 400 --Kmax 40 --beta 0.5 --dt 0.2 --benchmark
+    - C-VF in the discrete-time setting, 2 hidden layers (C-VF-2h)
+      [the initial angle between forward and backward weights is zero, i.e. \Psi(\theta_f, \theta_b) = 0]:
 
-    - Prototypical setting, 1 hidden layer (P-1h):
+      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.00016 0.0016 0.009 --epochs 150 --T 100 --Kmax 20 --beta 0.35
+      --cep --learning-rule 'vf' --randbeta 0.5
 
-      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.04 0.08 --epochs 30 --T 40 --Kmax 15 --beta 0.1 --benchmark
 
-    - Prototypical setting, 2 hidden layers (P-2h):
+  ii) Subsection 4.1, plot of Fig. 4 [C-VF MNIST results as a function of the initial weight angle between forward and backward weights]:
 
-      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.005 0.05 0.2 --epochs 50 --T 100 --Kmax 20 --beta 0.5 --benchmark
+    -  Curve 'C-VF-1h': run the following command with angle_value \in {0, 22.5, 45, 67.5, 90, 112.5, 135, 167.5, 180}
 
-    - Prototypical setting, 3 hidden layers (P-3h):
+      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0038 0.0076 --epochs 100 --T 40 --Kmax 15 --beta 0.20 --cep --learning-rule 'vf' 
+      --randbeta 0.5 --angle angle_value
 
-      python main.py --action 'train' --discrete --size_tab 10 512 512 512 784 --lr_tab 0.002 0.01 0.05 0.2 --epochs 100 --T 180 --Kmax 20 --beta 0.5 --benchmark
+    -  Curve 'C-VF-2h': run the following command with angle_value \in {0, 22.5, 45, 67.5, 90, 112.5, 135, 167.5, 180}
 
-    - Prototypical setting, convolutional architecture (P-conv): 
+      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.00016 0.0016 0.009 --epochs 150 --T 100 --Kmax 20 --beta 0.35
+      --cep --learning-rule 'vf' --randbeta 0.5 --angle angle_value
 
-      python main.py --action 'train' --activation-function 'hardsigm' --C_tab 64 32 1 --size_tab 10 --lr_tab 0.015 0.035 0.15 --epochs 40 --T 200 --Kmax 10 --beta 0.4 --benchmark
+
+  iii) Subsection 4.3, Fig. 5 (a) [EP, C-EP and C-VF results as a function of the initial angle between the total EP update and the total BPTT gradient]:
+
+    - EP in the discrete-time setting, 1 hidden layer (EP-1h):
+
+      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.04 0.08 --epochs 30 --T 30 --Kmax 10 --beta 0.1 --angle-grad
+
+    - EP in the discrete-time setting, 2 hidden layers (EP-2h):
+  
+      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.005 0.05 0.2 --epochs 50 --T 100 --Kmax 20 --beta 0.5 --angle-grad 
+
+    - C-EP in the discrete-time setting, 1 hidden layer (C-EP-1h):
+
+      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0028 0.0056 --epochs 100 --T 40 --Kmax 15 --beta 0.2 --cep --angle-grad
+
+    - C-EP in the discrete-time setting, 2 hidden layers (C-EP-2h):
+
+      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.00018 0.0018 0.01 --epochs 150 --T 100 --Kmax 20 --beta 0.5 --cep --angle-grad
+
+    - C-VF in the discrete-time setting, 1 hidden layer (C-VF-1h). Run the following command with angle_value \in {0, 22.5, 45, 67.5, 90, 112.5, 135, 167.5, 180}:
+
+      python main.py --action 'train' --discrete --size_tab 10 512 784 --lr_tab 0.0038 0.0076 --epochs 100 --T 40 --Kmax 15 --beta 0.20 --cep --learning-rule 'vf' 
+      --randbeta 0.5 --angle angle_value --angle-grad
+
+    - C-VF in the discrete-time setting, 2 hidden layers (C-VF-2h). Run the following command with angle_value \in {0, 22.5, 45, 67.5, 90, 112.5, 135, 167.5, 180}:
+
+      python main.py --action 'train' --discrete --size_tab 10 512 512 784 --lr_tab 0.00016 0.0016 0.009 --epochs 150 --T 100 --Kmax 20 --beta 0.35
+      --cep --learning-rule 'vf' --randbeta 0.5 --angle angle_value --angle-grad
+
+
+  iv) Subsection 4.3, Fig. 5 (b)
+
+    - EP in the continuous-time setting, 1 hidden layer (EP-1h):
+
+    - C-EP in the continuous-time setting, 1 hidden layer (C-EP-1h):
+
+    - C-VF in the continuous-time setting, 1 hidden layer (C-VF-1h) with an angle of 45 degrees between forward and backward weights:
+
+
+        
+
+
+
 
 * Appendix C:
 
-  i) Appendix C.2.1, Fig. 8 (GDU property in the energy-based setting, fully connected layer architecture, 1 hidden layer):
 
-    python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.001 --T 800 --Kmax 80
-
-
-  ii) Appendix C.2.1, Fig. 9 (GDU property in the energy-based setting, fully connected layer architecture, 2 hidden layers):
-
-    python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.01 --T 5000 --Kmax 150 
-  
-
-  iii) Appendix C.2.1, Fig. 10 (GDU property in the energy-based setting, fully connected layer architecture, 3 hidden layers):
-
-    python main.py --action 'plotcurves' --no-clamp --batch-size 1 --size_tab 10 512 512 512 784 --activation-function 'tanh' --dt 0.08 --beta 0.02 --T 30000 --Kmax 200     
-
-
-  iv) Appendix C.2.2, Fig. 11 (GDU property in the prototypical setting, fully connected layer architecture, 1 hidden layer):
-
-    python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 784 --activation-function 'tanh' --beta 0.01 --T 150 --Kmax 10
-
-
-  iv) Appendix C.2.2, Fig. 12 (GDU property in the prototypical setting, fully connected layer architecture, 2 hidden layers):
-
-    python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 512 784 --activation-function 'tanh' --beta 0.01 --T 1500 --Kmax 40
-
-
-  v) Appendix C.2.2, Fig. 13 (GDU property in the prototypical setting, fully connected layer architecture, 3 hidden layers):
-
-    python main.py --action 'plotcurves' --discrete --batch-size 1 --size_tab 10 512 512 512 784 --activation-function 'tanh' --beta 0.015 --T 5000 --Kmax 40
-
-  vi) Appendix D, Fig. 16 (RMSE analysis on the convolutional architecture):
-  
-    python main.py --action 'plotcurves' --batch-size 20 --size_tab 10 --C_tab 64 32 1 --activation-function 'hardsigm' --beta 0.02 --T 5000 --Kmax 10
  
 

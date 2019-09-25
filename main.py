@@ -300,8 +300,9 @@ if __name__ == '__main__':
             target = example_targets                    
             nS, dS, dT, _ = compute_nSdSdT(net, x, target)
             nT = compute_nT(net, x, target)                       
-            theta_T = compute_cosRMSE(nS, dS, nT, dT)
+            theta_T = compute_angleGrad(nS, dS, nT, dT)
             results_dict_angle = {'theta_T': theta_T}
+            print('Initial angle between total EP update and total BPTT gradient: {:.2f} degrees'.format(theta_T))		
 
 
         #train with EP

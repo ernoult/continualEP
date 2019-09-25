@@ -6,7 +6,6 @@ import torchvision
 import torch.optim as optim
 import torch.nn.functional as F
 
-#from main import rho, rhop, rhop2
 
 from main import rho, rhop
 
@@ -56,7 +55,7 @@ class VFcont(nn.Module):
                 mask = 2*torch.bernoulli((1 - p_switch)*torch.ones_like(w[2*i + 1].weight.data)) - 1
                 w[2*i + 1].weight.data = w[2*i + 1].weight.data*mask
                 angle = (180/np.pi)*np.arccos((w[2*i + 1].weight.data*torch.transpose(w[2*i].weight.data, 0 ,1)).sum().item()/np.sqrt((w[2*i + 1].weight.data**2).sum().item()*(w[2*i].weight.data**2).sum().item()))
-                print('Angle: {:.2f} degrees'.format(angle))
+                print('Angle between forward and backward weights: {:.2f} degrees'.format(angle))
                 del angle, mask
         #**************************************************************************#
                 	
@@ -308,7 +307,7 @@ class VFdisc(nn.Module):
                 mask = 2*torch.bernoulli((1 - p_switch)*torch.ones_like(w[2*i + 1].weight.data)) - 1
                 w[2*i + 1].weight.data = w[2*i + 1].weight.data*mask
                 angle = (180/np.pi)*np.arccos((w[2*i + 1].weight.data*torch.transpose(w[2*i].weight.data, 0 ,1)).sum().item()/np.sqrt((w[2*i + 1].weight.data**2).sum().item()*(w[2*i].weight.data**2).sum().item()))
-                print('Angle: {:.2f} degrees'.format(angle))
+                print('Angle between forward and backward weights: {:.2f} degrees'.format(angle))
                 del angle, mask
         #**************************************************************************#
 
