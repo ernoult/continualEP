@@ -10,10 +10,11 @@ from netFunctions import *
 from plotFunctions import *
 
 
-#***************C- EP VERSION***************#
+#***************ICLR VERSION***************#
 
-# Training settings
-parser = argparse.ArgumentParser(description='VF & C-EP')
+parser = argparse.ArgumentParser(description='Equilibrium Propagation with Continual Weight Updates')
+
+# Optimization arguments
 parser.add_argument(
     '--batch-size',
     type=int,
@@ -40,12 +41,24 @@ parser.add_argument(
     metavar='LR',
     help='learning rate (default: [0.05, 0.1])')
 parser.add_argument(
+    '--randbeta',
+    type=float,
+    default=0,
+    help='probability of switching beta (defaut: 0)')
+
+# Network arguments
+parser.add_argument(
     '--size_tab',
     nargs = '+',
     type=int,
     default=[10],
     metavar='ST',
-    help='tab of layer sizes (default: [10])')    
+    help='tab of layer sizes (default: [10])')
+parser.add_argument(
+    '--discrete',
+    action='store_true',
+    default=False, 
+    help='discrete-time dynamics (default: False)')   
 parser.add_argument(
     '--dt',
     type=float,
@@ -71,17 +84,6 @@ parser.add_argument(
     metavar='BETA',
     help='nudging parameter (default: 1)') 
 parser.add_argument(
-    '--weight-initialization',
-    type=str,
-    default='tied',
-    metavar='WINIT',
-    help='weight initialization (default: tied)')
-parser.add_argument(
-    '--action',
-    type=str,
-    default='train',
-    help='action to execute (default: train)')    
-parser.add_argument(
     '--activation-function',
     type=str,
     default='sigm',
@@ -93,28 +95,6 @@ parser.add_argument(
     default=False,
     help='clamp neurons between 0 and 1 (default: True)')
 parser.add_argument(
-    '--discrete',
-    action='store_true',
-    default=False, 
-    help='discrete-time dynamics (default: False)')
-parser.add_argument(
-    '--toymodel',
-    action='store_true',
-    default=False, 
-    help='Implement fully connected toy model (default: False)')                                                    
-parser.add_argument(
-    '--device-label',
-    type=int,
-    default=0,
-    help='selects cuda device (default 0, -1 to select )')
-
-#***********************************************#
-parser.add_argument(
-    '--benchmark',
-    action='store_true',
-    default=False, 
-    help='benchmark wrt BPTT (default: False)')
-parser.add_argument(
     '--learning-rule',
     type=str,
     default='ep',
@@ -125,17 +105,28 @@ parser.add_argument(
     action='store_true',
     default=False, 
     help='continual ep/vf (default: False)')
-#***********************************************#
+parser.add_argument(
+    '--angle',
+    type=float,
+    default=0,
+    help='initial angle between forward and backward weights(defaut: 0)')
 
-#******************debug C-EP******************#
+#other arguments
+parser.add_argument(
+    '--action',
+    type=str,
+    default='train',
+    help='action to execute (default: train)')                                                 
+parser.add_argument(
+    '--device-label',
+    type=int,
+    default=0,
+    help='selects cuda device (default 0, -1 to select )')
 parser.add_argument(
     '--debug-cep',
     action='store_true',
     default=False, 
     help='debug cep (default: False)')
-#**********************************************#
-
-#***************FIX SEED***************#
 parser.add_argument(
     '--seed',
     nargs = '+',
@@ -143,56 +134,11 @@ parser.add_argument(
     default=[],
     metavar='SEED',
     help='seed (default: None')
-#**************************************#
-
-#**************************FORMER-VF-LR**************************#
 parser.add_argument(
-    '--former',
+    '--angle-grad',
     action='store_true',
     default=False, 
-    help='uses former version of VF learning rule (default: False)')
-#****************************************************************#
-
-
-#*************************SPARSITY*************************#
-parser.add_argument(
-    '--sparsity',
-    type=float,
-    default=0,
-    help='weight sparsity (defaut: 0)')
-#**********************************************************#
-
-#*************************COMPRESSION*************************#
-parser.add_argument(
-    '--compression',
-    type=float,
-    default=1,
-    help='compression (defaut: 1)')
-#**********************************************************#
-#******************debug C-EP******************#
-parser.add_argument(
-    '--debug',
-    action='store_true',
-    default=False, 
-    help='debug (default: False)')
-#**********************************************#
-
-#**********************rand beta**********************#
-parser.add_argument(
-    '--randbeta',
-    type=float,
-    default=0,
-    help='probability of switching beta (defaut: 0)')
-#*****************************************************#
-
-#**********************initial angle**********************#
-parser.add_argument(
-    '--angle',
-    type=float,
-    default=0,
-    help='initial angle between forward and backward weights(defaut: 0)')
-#*********************************************************#
-
+    help='computes initial angle between EP updates and BPTT gradients (default: False)')
 
 args = parser.parse_args()
 
@@ -243,8 +189,6 @@ if  args.activation_function == 'sigm':
         return 1/(1+torch.exp(-(4*(x-0.5))))
     def rhop(x):
         return 4*torch.mul(rho(x), 1 -rho(x))
-    def rhop2(x):
-        return 4*torch.mul(x, 1 - x)
 
 elif args.activation_function == 'hardsigm':
     def rho(x):
@@ -258,8 +202,7 @@ elif args.activation_function == 'tanh':
         return torch.tanh(x)
     def rhop(x):
         return 1 - torch.tanh(x)**2
-    def rhop2(x):
-        return 1 - x**2   
+
      
                     
 if __name__ == '__main__':
@@ -267,51 +210,19 @@ if __name__ == '__main__':
     input_size = 28
 
     #Build the net 
-    if (not args.toymodel) & (not args.discrete) & (args.learning_rule == 'vf') :
-
+    if  (not args.discrete) & (args.learning_rule == 'vf') :
         net = VFcont(args)
 
-        if args.benchmark:
-            net_bptt = VFcont(args)
-
-            net_bptt.load_state_dict(net.state_dict())
-
-    if (not args.toymodel) & (not args.discrete) & (args.learning_rule == 'ep') :
-
+    if (not args.discrete) & (args.learning_rule == 'ep') :
         net = EPcont(args)
 
-        if args.benchmark:
-            net_bptt = EPcont(args)
-
-            net_bptt.load_state_dict(net.state_dict())
-
-
-    elif (not args.toymodel) & (args.discrete) & (args.learning_rule == 'vf'):
-
+    elif (args.discrete) & (args.learning_rule == 'vf'):
         net = VFdisc(args)        
 
-        if args.benchmark:
-            net_bptt = VFdisc(args)
-
-            net_bptt.load_state_dict(net.state_dict())
-
-    elif (not args.toymodel) & (args.discrete) & (args.learning_rule == 'ep'):
-
+    elif (args.discrete) & (args.learning_rule == 'ep'):
         net = EPdisc(args)
 
-        if args.benchmark:
-            net_bptt = EPdisc(args)
-            net_bptt.load_state_dict(net.state_dict())         
-
-
-    elif (args.toymodel) & (not args.discrete):
-        net = toyVFcont(args)
-
-    elif (args.toymodel) & (args.discrete):
-
-        net = toyVFdisc(args)   
-                                  
-
+                
     if args.action == 'plotcurves':
         if (not args.toymodel):
             batch_idx, (example_data, example_targets) = next(enumerate(train_loader))    
@@ -346,67 +257,32 @@ if __name__ == '__main__':
         pickle.dump(results_dict, outfile)
         outfile.close()
 
+    if args.action == 'cosRMSE':
 
-    if args.action == 'RMSE':
-
-        batch_idx, (example_data, example_targets) = next(enumerate(train_loader))    
-                   
+        batch_idx, (example_data, example_targets) = next(enumerate(train_loader))                      
         if net.cuda: 
-            example_data, example_targets = example_data.to(net.device), example_targets.to(net.device)    
-	    
+            example_data, example_targets = example_data.to(net.device), example_targets.to(net.device)    	    
         x = example_data
-        target = example_targets 
-                    
+        target = example_targets                    
         nS, dS, dT, _ = compute_nSdSdT(net, x, target)
-        nT = compute_nT(net, x, target)
-                        		
-        #create path              
+        nT = compute_nT(net, x, target)                       
+        theta_T = compute_cosRMSE(nS, dS, nT, dT)
+        results_dict = {'theta_T': theta_T}
+
+
+        #create path             
+ 
         BASE_PATH, name = createPath(args)
 
         #save hyperparameters
         createHyperparameterfile(BASE_PATH, name, args)
-        
-        #*******WATCH OUT: compute and save *ONLY* RelMSE*******#
-        RMSE_S, RMSE_T = compute_RMSE(nS, dS, nT, dT)
-        results_dict = {'RMSE_S': RMSE_S , 'RMSE_T': RMSE_T}
                           
         outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
         pickle.dump(results_dict, outfile)
         outfile.close()
-
-
-    if args.action == 'cosRMSE':
-
-        batch_idx, (example_data, example_targets) = next(enumerate(train_loader))    
-                   
-        if net.cuda: 
-            example_data, example_targets = example_data.to(net.device), example_targets.to(net.device)    
-	    
-        x = example_data
-        target = example_targets 
-                    
-        nS, dS, dT, _ = compute_nSdSdT(net, x, target)
-        nT = compute_nT(net, x, target)
-                        		
-        #create path              
-        #BASE_PATH, name = createPath(args)
-
-        #save hyperparameters
-        #createHyperparameterfile(BASE_PATH, name, args)
-        
-        #*******WATCH OUT: compute and save *ONLY* RelMSE*******#
-        theta_S, theta_T = compute_cosRMSE(nS, dS, nT, dT)
-        print(theta_T)
-        #results_dict = {'theta_S': theta_S , 'theta_T': theta_T}
-                          
-        #outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
-        #pickle.dump(results_dict, outfile)
-        #outfile.close()
      
-                                                            
-                                    
+                  
     elif args.action == 'train':
-
 
         #create path              
         BASE_PATH, name = createPath(args)
@@ -414,105 +290,43 @@ if __name__ == '__main__':
         #save hyperparameters
         createHyperparameterfile(BASE_PATH, name, args)
 
-        #benchmark wrt BPTT
-        if args.benchmark:
-            error_train_bptt_tab = []
-            error_test_bptt_tab = []  
+        
+        #compute initial angle between EP update and BPTT gradient
+        if args.angle_grad:
+            batch_idx, (example_data, example_targets) = next(enumerate(train_loader))                      
+            if net.cuda: 
+                example_data, example_targets = example_data.to(net.device), example_targets.to(net.device)    	    
+            x = example_data
+            target = example_targets                    
+            nS, dS, dT, _ = compute_nSdSdT(net, x, target)
+            nT = compute_nT(net, x, target)                       
+            theta_T = compute_cosRMSE(nS, dS, nT, dT)
+            results_dict_angle = {'theta_T': theta_T}
 
-            for epoch in range(1, args.epochs + 1):
-                error_train_bptt = train(net_bptt, train_loader, epoch, 'BPTT')
-                error_test_bptt = evaluate(net_bptt, test_loader)
-                error_train_bptt_tab.append(error_train_bptt)
-                error_test_bptt_tab.append(error_test_bptt)  
-                results_dict = {'error_train_bptt_tab' : error_train_bptt_tab, 'error_test_bptt_tab' : error_test_bptt_tab}
-                  
-                outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
-                pickle.dump(results_dict, outfile)
-                outfile.close()  
-        
-            results_dict_bptt = results_dict
-        
+
         #train with EP
         error_train_tab = []
         error_test_tab = []  
 
-        if args.debug:
-            dicts_syn = { 'sign':[], 'zero':[], 'mean_w': [], 'std_w': [],
-                        'mean_bias': [], 'std_bias': [],
-                        'align_1': [], 'align_2': []}
-
-            dicts_neu = {'satmin':[], 'satmax': []}
-
-            hyperdict_syn = []
-            for _ in range(len(net.w)):
-                hyperdict_syn.append(copy.deepcopy(dicts_syn))
-
-            hyperdict_neu = []
-            for _ in range(net.ns):
-                hyperdict_neu.append(copy.deepcopy(dicts_neu))
-
-        #******RECORD INITIAL WEIGHT ANGLE******#
-        if args.weight_initialization == 'any':
-            angle = computeInitialAngle(net)	
-            results_angle = {'angle': angle}
-        #***************************************#
-
-        #*****MEASURE ELAPSED TIME*****#
         start_time = datetime.datetime.now()
-        #******************************#
 
         for epoch in range(1, args.epochs + 1):
-            if not args.debug:
-                error_train = train(net, train_loader, epoch, args.learning_rule)
-                error_train_tab.append(error_train)
-            else:
-                error_train, hyperdict_mb = train(net, train_loader, epoch, args.learning_rule)
-                error_train_tab.append(error_train)
+            error_train = train(net, train_loader, epoch, args.learning_rule)
+            error_train_tab.append(error_train)
 
-                for ind, dicts_temp in enumerate(hyperdict_mb[0]):
-                    for indkey, (key, value) in enumerate(dicts_temp.items()):
-                        hyperdict_neu[ind][key] = np.concatenate((hyperdict_neu[ind][key], value))  
-
-                for ind, dicts_temp in enumerate(hyperdict_mb[1]):
-                    for indkey, (key, value) in enumerate(dicts_temp.items()):
-                        hyperdict_syn[ind][key] = np.concatenate((hyperdict_syn[ind][key], value))      
-                                     
-                results_debug = {'hyperdict_neu': hyperdict_neu, 'hyperdict_syn': hyperdict_syn}
 
             error_test = evaluate(net, test_loader)         
             error_test_tab.append(error_test) ;
-            results_dict = {'error_train_tab' : error_train_tab, 'error_test_tab' : error_test_tab,  'elapsed_time': datetime.datetime.now() - start_time}
+            results_dict = {'error_train_tab' : error_train_tab, 'error_test_tab' : error_test_tab,
+                            'elapsed_time': datetime.datetime.now() - start_time}
 
-            #******RECORD INITIAL WEIGHT ANGLE******#
-            if args.weight_initialization == 'any':
-                results_dict.update(results_angle)    
-            #***************************************#
+            if args.angle_grad:
+                results_dict.update(results_dict_angle)
 
-            if args.debug:
-                results_dict.update(results_debug)
+            outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
+            pickle.dump(results_dict, outfile)
+            outfile.close()
 
-            if args.benchmark:
-                results_dict_bptt.update(results_dict)    
-                outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
-                pickle.dump(results_dict_bptt, outfile)
-                outfile.close()
-            else:   
-                outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
-                pickle.dump(results_dict, outfile)
-                outfile.close()                  
-       
+            
+            
 
-    elif args.action == 'prop':
-        prop = receipe(net, train_loader, 20)
-        print(prop)
-        #create path              
-        BASE_PATH, name = createPath(args)
-
-        #save hyperparameters
-        createHyperparameterfile(BASE_PATH, name, args)
-        
-        results_dict = {'prop': prop}
-                          
-        outfile = open(os.path.join(BASE_PATH, 'results'), 'wb')
-        pickle.dump(results_dict, outfile)
-        outfile.close()     
