@@ -1,81 +1,19 @@
-*******************************************************
-
-# "Equilibrium Propagation with Continual Weight Updates" 
-
-*******************************************************
-
-The following document provides details about the code provided, alongside the commands to be run to reproduce
-the results appearing in the draft. 
+# Equilibrium Propagation with Continual Weight Updates
 
 
-I - Package requirements
+This repository contains the code producing the results of [the paper](https://arxiv.org/abs/2005.04168t) "Equilibrium Propagation with Continual Weight Updates". A [shorter version of this work](https://arxiv.org/abs/2005.04169) was presented at Cosyne 2020. 
 
-* Our code is compatible with Python 2.7 or 3.
+The project contains the following files:
 
-* Our virtual environment contains the following packages (after executing a pip freeze command):
+  + `main.py`: executes the code, with arguments specified in a parser.
 
-    #Basic packages:
-    absl-py==0.7.1
-    astor==0.7.1
-    backports.functools-lru-cache==1.5
-    backports.weakref==1.0.post1
-    cycler==0.10.0
-    enum34==1.1.6
-    funcsigs==1.0.2
-    futures==3.2.0
-    gast==0.2.2
-    grpcio==1.19.0
-    h5py==2.9.0
-    kiwisolver==1.0.1
-    Markdown==3.1
-    matplotlib==2.2.4
-    mock==2.0.0
-    numpy==1.16.2
-    pbr==5.1.3
-    Pillow==6.0.0
-    protobuf==3.7.1
-    pyparsing==2.3.1
-    python-dateutil==2.8.0
-    pytz==2018.9
-    PyYAML==5.1
-    scipy==1.2.1
-    six==1.12.0
-    subprocess32==3.5.3
-    termcolor==1.1.0
-    Werkzeug==0.15.2
+  + `netClasses.py`: contains the network classes.
 
-    #Relevant packages for our project:
-    Keras==2.2.4
-    Keras-Applications==1.0.6
-    Keras-Preprocessing==1.0.5
-    torch==1.0.1.post2
-    torchvision==0.2.2.post3
-    tensorboard==1.12.2
-    tensorflow==1.12.0
+  + `netFunctions.py`: contains the functions to run on the networks.
 
-* To create an environment to run our code:
-
-  i) Install Python 2.7 or 3.
-  ii) Install pip.
-  iii) Run pip install virtualenv.
-  ii) Run mkdir myproject.
-  iii) Run cd myproject.
-  iv) Run virtualenv myenv.
-  v) Create a requirements.txt file containing the package requirements of the previous bullet.
-  vi) source myenv/bin/activate.
-  vii) Run pip install -r requirements.txt.
-
-II - Files
-
-* The project contains the following files:
-
-  i) main.py: executes the code, with arguments specified in a parser.
-
-  ii) netClasses.py: contains the network classes.
-
-  iii) netFunctions: contains the functions to run on the networks.
-
-  iv) plotFunctions: contains the functions to plot the results. 
+  + `plotFunctions.py`: contains the functions to plot the results. 
+  
+  ![GitHub Logo](/AngleGrad_best.png)<!-- .element height="20%" width="20%" -->
 
 III - Details about main.py
 
